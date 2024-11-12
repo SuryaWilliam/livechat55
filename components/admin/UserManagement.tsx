@@ -26,11 +26,13 @@ const UserManagement = () => {
         const data = await res.json();
         setUsers(data);
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load users. Please try again.");
+        console.error("Error fetching users:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchUsers();
   }, []);
 
@@ -41,44 +43,56 @@ const UserManagement = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, isActive: !isActive }),
       });
-      if (res.ok) {
-        const updatedUser = await res.json();
-        setUsers((prevUsers) =>
-          prevUsers.map((user) => (user._id === userId ? updatedUser : user))
-        );
-      } else {
-        throw new Error("Failed to update user status");
-      }
+
+      if (!res.ok) throw new Error("Failed to update user status");
+
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user._id === userId ? { ...user, isActive: !isActive } : user
+        )
+      );
     } catch (error) {
+      setError("Failed to update user status. Please try again.");
       console.error("Error updating user status:", error);
     }
   };
 
-  if (loading) return <p>Loading users...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">User Management</h2>
-      <ul>
-        {users.map((user) => (
-          <li key={user._id} className="mb-2 flex justify-between items-center">
-            <p>
-              {user.name} ({user.email}) - {user.role}
-            </p>
-            <button
-              onClick={() => toggleUserStatus(user._id, user.isActive)}
-              className={`py-1 px-3 rounded-md ${
-                user.isActive
-                  ? "bg-green-500 text-white"
-                  : "bg-red-500 text-white"
-              }`}
-            >
-              {user.isActive ? "Active" : "Deactivated"}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <h2 className="text-lg font-bold mb-4">User Management</h2>
+
+      {error && <div className="error-message mb-4">{error}</div>}
+
+      {loading ? (
+        <p>Loading users...</p>
+      ) : (
+        <ul>
+          {users.map((user) => (
+            <li key={user._id} className="mb-4 border-b pb-2">
+              <p>
+                <strong>Name:</strong> {user.name}
+              </p>
+              <p>
+                <strong>Email:</strong> {user.email}
+              </p>
+              <p>
+                <strong>Role:</strong> {user.role}
+              </p>
+              <p>
+                <strong>Status:</strong> {user.isActive ? "Active" : "Inactive"}
+              </p>
+              <button
+                onClick={() => toggleUserStatus(user._id, user.isActive)}
+                className={`mt-2 px-4 py-2 rounded text-white ${
+                  user.isActive ? "bg-red-500" : "bg-green-500"
+                }`}
+              >
+                {user.isActive ? "Deactivate" : "Activate"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 };

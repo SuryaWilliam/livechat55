@@ -10,25 +10,25 @@ export default async function handler(
 ) {
   await dbConnect();
 
-  try {
-    if (req.method === "POST") {
-      const { sessionId, rating, feedback } = req.body;
+  if (req.method === "POST") {
+    const { sessionId, rating, feedback } = req.body;
 
-      if (!sessionId || typeof rating !== "number") {
-        return res
-          .status(400)
-          .json({ error: "Session ID and rating are required" });
-      }
-
-      const newRating = new Rating({ sessionId, rating, feedback });
-      await newRating.save();
-
-      return res.status(201).json(newRating);
+    if (!sessionId || typeof rating !== "number") {
+      return res
+        .status(400)
+        .json({ error: "Session ID and rating are required" });
     }
 
+    try {
+      const newRating = new Rating({ sessionId, rating, feedback });
+      await newRating.save();
+      return res.status(201).json(newRating);
+    } catch (error) {
+      console.error("Error saving rating:", error);
+      return res.status(500).json({ error: "Failed to save rating" });
+    }
+  } else {
+    res.setHeader("Allow", ["POST"]);
     res.status(405).json({ error: "Method Not Allowed" });
-  } catch (error) {
-    console.error("Error processing rating request:", error);
-    res.status(500).json({ error: "Failed to process rating request" });
   }
 }

@@ -36,66 +36,47 @@ const SystemSettings = () => {
           }
         );
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load system settings. Please try again.");
+        console.error("Error fetching system settings:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchSettings();
   }, []);
 
-  const updateSettings = async () => {
-    if (!settings) return;
-    try {
-      const res = await fetch("/api/admin/systemSettings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
-      if (!res.ok) throw new Error("Failed to update settings");
-    } catch (error) {
-      setError((error as Error).message);
-    }
-  };
-
-  if (loading) return <p>Loading settings...</p>;
+  if (loading) return <p>Loading system settings...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">System Settings</h2>
-      <div>
-        <label>Max Queue Size</label>
-        <input
-          type="number"
-          value={settings?.maxQueueSize || ""}
-          onChange={(e) =>
-            setSettings({
-              ...settings!,
-              maxQueueSize: parseInt(e.target.value, 10),
-            })
-          }
-          className="block w-full p-2 border rounded-md mb-2"
-        />
-        <label>Notification Preferences</label>
-        <input
-          type="text"
-          value={settings?.notificationPreferences.join(", ") || ""}
-          onChange={(e) =>
-            setSettings({
-              ...settings!,
-              notificationPreferences: e.target.value.split(", "),
-            })
-          }
-          className="block w-full p-2 border rounded-md mb-2"
-        />
-        <button
-          onClick={updateSettings}
-          className="py-2 px-4 bg-blue-500 text-white rounded-md"
-        >
-          Save Settings
-        </button>
-      </div>
+      <h2 className="text-lg font-bold mb-4">System Settings</h2>
+      {settings && (
+        <div>
+          <p>
+            <strong>Max Queue Size:</strong> {settings.maxQueueSize}
+          </p>
+          <p>
+            <strong>Notification Preferences:</strong>{" "}
+            {settings.notificationPreferences.join(", ")}
+          </p>
+          <h3 className="font-semibold mt-4">Agent Availability:</h3>
+          <ul>
+            {settings.agentAvailability.map((availability, index) => (
+              <li key={index} className="mb-2">
+                <p>
+                  <strong>Day:</strong> {availability.day}
+                </p>
+                <p>
+                  <strong>Time:</strong> {availability.startTime} -{" "}
+                  {availability.endTime}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

@@ -16,6 +16,7 @@ interface Agent {
 const ActiveChats = () => {
   const [activeChats, setActiveChats] = useState<Chat[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Fetch active chats and agents concurrently
@@ -26,15 +27,17 @@ const ActiveChats = () => {
           fetch("/api/admin/agents"),
         ]);
 
-        if (chatsRes.ok && agentsRes.ok) {
-          const activeChatsData = await chatsRes.json();
-          const agentsData = await agentsRes.json();
-          setActiveChats(activeChatsData);
-          setAgents(agentsData);
-        } else {
-          console.error("Failed to fetch active chats or agents");
+        if (!chatsRes.ok || !agentsRes.ok) {
+          throw new Error("Failed to fetch active chats or agents");
         }
+
+        const activeChatsData = await chatsRes.json();
+        const agentsData = await agentsRes.json();
+
+        setActiveChats(activeChatsData);
+        setAgents(agentsData);
       } catch (error) {
+        setError("An error occurred while fetching data. Please try again.");
         console.error("Error fetching data:", error);
       }
     };
@@ -42,47 +45,30 @@ const ActiveChats = () => {
     fetchData();
   }, []);
 
-  const reassignChat = async (sessionId: string, newAgentId: string) => {
-    try {
-      await fetch("/api/admin/reassignChat", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, newAgentId }),
-      });
-    } catch (error) {
-      console.error("Failed to reassign chat:", error);
-    }
-  };
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Active Chats</h2>
-      <ul>
+    <div>
+      <h1>Active Chats</h1>
+      <div className="chats-list">
         {activeChats.map((chat) => (
-          <li key={chat._id} className="mb-2">
-            <p>
-              {chat.username} - {chat.category}
-            </p>
-            <a
-              href={`/chat/${chat._id}`}
-              className="text-blue-500 hover:underline"
-            >
-              Join Chat
-            </a>
-            <select
-              onChange={(e) => reassignChat(chat._id, e.target.value)}
-              className="ml-2"
-            >
-              <option value="">Reassign</option>
-              {agents.map((agent) => (
-                <option key={agent._id} value={agent._id}>
-                  {agent.name}
-                </option>
-              ))}
-            </select>
-          </li>
+          <div key={chat._id} className="chat-item">
+            <p>Username: {chat.username}</p>
+            <p>Category: {chat.category}</p>
+          </div>
         ))}
-      </ul>
+      </div>
+
+      <h2>Available Agents</h2>
+      <div className="agents-list">
+        {agents.map((agent) => (
+          <div key={agent._id} className="agent-item">
+            <p>Agent: {agent.name}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

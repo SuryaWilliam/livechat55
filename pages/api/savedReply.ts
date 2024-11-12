@@ -42,9 +42,10 @@ export default async function handler(
       return res.status(204).end();
     }
 
+    res.setHeader("Allow", ["GET", "POST", "DELETE"]);
     res.status(405).json({ error: "Method Not Allowed" });
   } catch (error) {
-    console.error("Error processing saved reply request:", error);
-    res.status(500).json({ error: "Failed to process saved reply request" });
+    console.error("Error handling saved reply request:", error);
+    res.status(500).json({ error: "Server error" });
   }
 }

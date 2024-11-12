@@ -26,11 +26,13 @@ const AgentAnalytics = () => {
         const data = await res.json();
         setAgentData(data.agentData);
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load agent analytics. Please try again.");
+        console.error("Error fetching agent analytics:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchAgentAnalytics();
   }, []);
 
@@ -39,17 +41,23 @@ const AgentAnalytics = () => {
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Agent Performance Analytics</h2>
+      <h2 className="text-lg font-bold mb-4">Agent Analytics</h2>
       <ul>
         {agentData.map((agent) => (
-          <li key={agent._id} className="mb-4">
-            <h3 className="text-md font-semibold">{agent.name}</h3>
-            <p>Total Chats: {agent.totalChats}</p>
+          <li key={agent._id} className="mb-4 border-b pb-2">
             <p>
-              Average Response Time:{" "}
-              {agent.avgResponseTime?.toFixed(2) || "N/A"} minutes
+              <strong>Name:</strong> {agent.name}
             </p>
-            <p>Average Rating: {agent.avgRating?.toFixed(2) || "N/A"}</p>
+            <p>
+              <strong>Total Chats:</strong> {agent.totalChats}
+            </p>
+            <p>
+              <strong>Average Response Time:</strong>{" "}
+              {agent.avgResponseTime.toFixed(2)} seconds
+            </p>
+            <p>
+              <strong>Average Rating:</strong> {agent.avgRating.toFixed(2)}
+            </p>
           </li>
         ))}
       </ul>

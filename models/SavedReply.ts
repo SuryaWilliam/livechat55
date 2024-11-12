@@ -7,7 +7,7 @@ interface ISavedReply extends Document {
   category: string;
 }
 
-const SavedReplySchema = new Schema({
+const SavedReplySchema = new Schema<ISavedReply>({
   message: { type: String, required: true },
   category: { type: String, required: true },
 });

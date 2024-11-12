@@ -24,11 +24,13 @@ const Reports = () => {
         const data = await res.json();
         setReport(data);
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load report data. Please try again.");
+        console.error("Error fetching report data:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchReport();
   }, []);
 
@@ -37,18 +39,13 @@ const Reports = () => {
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Reports and Analytics</h2>
-      {report ? (
-        <ul>
-          <li>Total Completed Chats: {report.completedChats}</li>
-          <li>
-            Average Response Time: {report.averageResponseTime.toFixed(2)}{" "}
-            seconds
-          </li>
-          <li>Average Rating: {report.avgRating.toFixed(1)}</li>
-        </ul>
-      ) : (
-        <p>No report data available.</p>
+      <h2 className="text-lg font-bold mb-4">Reports</h2>
+      {report && (
+        <div>
+          <p>Completed Chats: {report.completedChats}</p>
+          <p>Average Response Time: {report.averageResponseTime} seconds</p>
+          <p>Average Rating: {report.avgRating.toFixed(2)}</p>
+        </div>
       )}
     </div>
   );

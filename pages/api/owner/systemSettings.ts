@@ -31,48 +31,30 @@ export default async function handler(
     try {
       let settings = await SystemSettings.findOne({});
       if (!settings) {
-        // Use default settings if no document is found
         settings = new SystemSettings(defaultSettings);
         await settings.save();
       }
-      return res.status(200).json(settings);
+      res.status(200).json(settings);
     } catch (error) {
       console.error("Error fetching system settings:", error);
-      return res.status(500).json({ error: "Failed to fetch system settings" });
+      res.status(500).json({ error: "Failed to fetch system settings" });
     }
   } else if (req.method === "PUT") {
-    const {
-      maxQueueSize,
-      notificationPreferences,
-      agentAvailability,
-      chatAutoCloseDuration,
-      sessionTimeout,
-      loggingLevel,
-      autoResponseMessages,
-    } = req.body;
+    const updatedSettings = req.body;
 
     try {
-      const updatedSettings = await SystemSettings.findOneAndUpdate(
+      const settings = await SystemSettings.findOneAndUpdate(
         {},
-        {
-          maxQueueSize,
-          notificationPreferences,
-          agentAvailability,
-          chatAutoCloseDuration,
-          sessionTimeout,
-          loggingLevel,
-          autoResponseMessages,
-        },
+        updatedSettings,
         { new: true, upsert: true }
       );
-      return res.status(200).json(updatedSettings);
+      res.status(200).json(settings);
     } catch (error) {
       console.error("Error updating system settings:", error);
-      return res
-        .status(500)
-        .json({ error: "Failed to update system settings" });
+      res.status(500).json({ error: "Failed to update system settings" });
     }
   } else {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    res.setHeader("Allow", ["GET", "PUT"]);
+    res.status(405).json({ error: "Method Not Allowed" });
   }
 }

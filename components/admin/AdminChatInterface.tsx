@@ -18,22 +18,26 @@ interface AdminChatInterfaceProps {
 const AdminChatInterface = ({ sessionId }: AdminChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [reply, setReply] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchMessages = async () => {
       try {
         const res = await fetch(`/api/chats/${sessionId}/messages`);
-        if (res.ok) {
-          const data = await res.json();
-          setMessages(data.messages);
+        if (!res.ok) {
+          throw new Error("Failed to fetch messages");
         }
+        const data = await res.json();
+        setMessages(data.messages);
       } catch (error) {
+        setError("Could not load messages. Please try again.");
         console.error("Error fetching messages:", error);
       }
     };
 
     fetchMessages();
 
+    // Listen for new messages
     socket.on("newMessage", (newMessage: Message) => {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
     });
@@ -43,67 +47,53 @@ const AdminChatInterface = ({ sessionId }: AdminChatInterfaceProps) => {
     };
   }, [sessionId]);
 
-  const sendMessage = async () => {
+  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setReply(e.target.value);
+  };
+
+  const handleSendMessage = async () => {
     if (!reply.trim()) return;
-
-    const message: Message = {
-      sender: "admin",
-      content: reply,
-      timestamp: new Date().toISOString(),
-    };
-
     try {
-      const res = await fetch(`/api/chats/${sessionId}/messages`, {
+      await fetch(`/api/chats/${sessionId}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(message),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content: reply }),
       });
-      if (res.ok) {
-        setMessages((prevMessages) => [...prevMessages, message]);
-        socket.emit("adminReply", { sessionId, message });
-        setReply("");
-      }
+      setReply("");
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error("Error sending message:", error);
+      setError("Failed to send message.");
     }
   };
 
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
+
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Chat with User</h2>
-      <div className="h-64 overflow-y-scroll border p-4 mb-4">
+    <div>
+      <h1>Admin Chat Interface</h1>
+      <div className="messages">
         {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`mb-2 ${msg.sender === "admin" ? "text-right" : ""}`}
-          >
-            <p
-              className={`${
-                msg.sender === "admin" ? "text-blue-500" : "text-gray-700"
-              }`}
-            >
-              {msg.content}
+          <div key={index} className="message">
+            <p>
+              <strong>{msg.sender}</strong>: {msg.content}
             </p>
-            <p className="text-xs text-gray-500">
-              {new Date(msg.timestamp).toLocaleTimeString()}
-            </p>
+            <p className="timestamp">{msg.timestamp}</p>
           </div>
         ))}
       </div>
-      <div className="flex">
+
+      <div className="reply-box">
         <input
           type="text"
           value={reply}
-          onChange={(e) => setReply(e.target.value)}
+          onChange={handleReplyChange}
           placeholder="Type a reply..."
-          className="w-full p-2 border rounded-md mr-2"
         />
-        <button
-          onClick={sendMessage}
-          className="py-2 px-4 bg-blue-500 text-white rounded-md"
-        >
-          Send
-        </button>
+        <button onClick={handleSendMessage}>Send</button>
       </div>
     </div>
   );

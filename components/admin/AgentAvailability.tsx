@@ -21,7 +21,8 @@ const AgentAvailability = () => {
         const data = await res.json();
         setAgents(Array.isArray(data) ? data : []);
       } catch (err) {
-        setError((err as Error).message);
+        setError("Could not load agent data. Please try again later.");
+        console.error("Error fetching agents:", err);
       }
     };
     fetchAgents();
@@ -35,40 +36,40 @@ const AgentAvailability = () => {
         body: JSON.stringify({ agentId, isAvailable: !isAvailable }),
       });
 
-      if (res.ok) {
-        const updatedAgent = await res.json();
-        setAgents((prevAgents) =>
-          prevAgents.map((agent) =>
-            agent._id === updatedAgent._id ? updatedAgent : agent
-          )
-        );
-      } else {
-        throw new Error("Failed to update agent status");
-      }
+      if (!res.ok) throw new Error("Failed to update availability");
+
+      setAgents((prevAgents) =>
+        prevAgents.map((agent) =>
+          agent._id === agentId
+            ? { ...agent, isAvailable: !isAvailable }
+            : agent
+        )
+      );
     } catch (error) {
-      console.error("Error updating agent status:", error);
+      setError("Failed to update agent availability. Please try again.");
+      console.error("Error updating availability:", error);
     }
   };
 
   if (error) {
-    return <p className="text-red-500">Error: {error}</p>;
+    return <div className="error-message">{error}</div>;
   }
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Agent Availability</h2>
+      <h2 className="text-lg font-bold mb-4">Agent Availability</h2>
       <ul>
         {agents.map((agent) => (
           <li
             key={agent._id}
             className="mb-2 flex justify-between items-center"
           >
-            <p>{agent.name}</p>
+            <span>{agent.name}</span>
             <button
+              className={`px-4 py-2 rounded-md ${
+                agent.isAvailable ? "bg-green-500" : "bg-red-500"
+              } text-white`}
               onClick={() => toggleAvailability(agent._id, agent.isAvailable)}
-              className={`py-1 px-3 rounded-md ${
-                agent.isAvailable ? "bg-green-500 text-white" : "bg-gray-300"
-              }`}
             >
               {agent.isAvailable ? "Available" : "Unavailable"}
             </button>

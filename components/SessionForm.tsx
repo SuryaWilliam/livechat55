@@ -8,6 +8,7 @@ const SessionForm: React.FC = () => {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const startChat = async () => {
@@ -17,6 +18,7 @@ const SessionForm: React.FC = () => {
     }
 
     setError("");
+    setLoading(true);
 
     try {
       const res = await fetch("/api/session", {
@@ -33,40 +35,47 @@ const SessionForm: React.FC = () => {
         setError(data.error || "Failed to start chat.");
       }
     } catch (error) {
-      console.error("Error starting chat session:", error);
-      setError("An unexpected error occurred.");
+      setError("Error starting chat. Please try again.");
+      console.error("Error starting chat:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md max-w-md mx-auto">
-      <h2 className="text-lg font-bold mb-4">Start a Chat</h2>
-      {error && <p className="text-red-500">{error}</p>}
+    <div className="p-4 bg-white shadow-md rounded-md">
+      <h2 className="text-lg font-bold mb-4">Start a New Chat</h2>
+
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+
       <input
         type="text"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         placeholder="Username"
-        className="w-full mb-2 p-2 border rounded-md"
+        className="border p-2 rounded w-full mb-2"
       />
-      <textarea
+      <input
+        type="text"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        placeholder="Description"
-        className="w-full mb-2 p-2 border rounded-md"
+        placeholder="Describe your issue"
+        className="border p-2 rounded w-full mb-2"
       />
       <input
         type="text"
         value={category}
         onChange={(e) => setCategory(e.target.value)}
         placeholder="Category"
-        className="w-full mb-4 p-2 border rounded-md"
+        className="border p-2 rounded w-full mb-2"
       />
+
       <button
         onClick={startChat}
-        className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        disabled={loading}
+        className="px-4 py-2 bg-blue-500 text-white rounded"
       >
-        Start Chat
+        {loading ? "Starting..." : "Start Chat"}
       </button>
     </div>
   );

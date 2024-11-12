@@ -4,19 +4,24 @@ import { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 import MessageInput from "../MessageInput";
 
-const socket = io();
-
 interface Message {
   sender: string;
   content: string;
   timestamp: string;
 }
 
-const AgentChatRoom = ({ sessionId, username }) => {
+interface AgentChatRoomProps {
+  sessionId: string;
+  username: string;
+}
+
+const socket = io();
+
+const AgentChatRoom = ({ sessionId, username }: AgentChatRoomProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>("");
-  const [isTyping, setIsTyping] = useState(false);
-  const messageEndRef = useRef(null);
+  const [error, setError] = useState<string | null>(null);
+  const messageEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // Join the chat session via socket
@@ -24,76 +29,77 @@ const AgentChatRoom = ({ sessionId, username }) => {
 
     // Fetch initial chat history
     const fetchMessages = async () => {
-      const res = await fetch(`/api/message?sessionId=${sessionId}`);
-      const data = await res.json();
-      setMessages(data.messages);
+      try {
+        const res = await fetch(`/api/message?sessionId=${sessionId}`);
+        if (!res.ok) throw new Error("Failed to load messages");
+
+        const data = await res.json();
+        setMessages(data.messages);
+      } catch (error) {
+        setError("Could not load chat history. Please try again.");
+        console.error("Error fetching messages:", error);
+      }
     };
     fetchMessages();
 
     // Listen for incoming messages
     socket.on("receive_message", (message: Message) => {
       setMessages((prev) => [...prev, message]);
-    });
-
-    // Handle typing indicator
-    socket.on("typing", ({ typing, sender }) => {
-      setIsTyping(typing && sender !== "agent");
+      scrollToBottom();
     });
 
     return () => {
-      socket.emit("leave_chat", sessionId); // Clean up on unmount
+      socket.off("receive_message");
+      socket.emit("leave_chat", sessionId);
     };
   }, [sessionId]);
+
+  const scrollToBottom = () => {
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
 
-    const message: Message = {
-      sender: "agent",
+    const newMessage = {
+      sender: username,
       content: input,
       timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, message]);
-    socket.emit("send_message", { sessionId, message });
-    setInput("");
-
-    await fetch("/api/message", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId,
-        content: message.content,
-        sender: "agent",
-      }),
-    });
-  };
-
-  const handleTyping = (typing: boolean) => {
-    socket.emit("typing", { sessionId, typing, sender: "agent" });
+    try {
+      socket.emit("send_message", { sessionId, message: newMessage });
+      setMessages((prev) => [...prev, newMessage]);
+      setInput("");
+      scrollToBottom();
+    } catch (error) {
+      setError("Failed to send message. Please try again.");
+      console.error("Error sending message:", error);
+    }
   };
 
   return (
-    <div className="chat-room">
-      <h2>Chat with {username}</h2>
-      <div className="message-list">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`message ${msg.sender === "agent" ? "agent" : "user"}`}
-          >
-            <span>{msg.content}</span>
-            <small>{new Date(msg.timestamp).toLocaleTimeString()}</small>
+    <div className="chat-room p-4 bg-white shadow-md rounded-md">
+      <h2 className="text-lg font-bold mb-4">Chat Room</h2>
+
+      {error && <div className="text-red-500 mb-2">{error}</div>}
+
+      <div className="messages mb-4">
+        {messages.map((msg, index) => (
+          <div key={index} className="message mb-2">
+            <p>
+              <strong>{msg.sender}</strong>: {msg.content}
+            </p>
+            <small>{new Date(msg.timestamp).toLocaleString()}</small>
           </div>
         ))}
         <div ref={messageEndRef} />
       </div>
-      {isTyping && <p className="typing-indicator">User is typing...</p>}
+
       <MessageInput
-        input={input}
-        setInput={setInput}
-        onSendMessage={handleSendMessage}
-        onTyping={handleTyping}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onSend={handleSendMessage}
       />
     </div>
   );

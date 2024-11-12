@@ -1,4 +1,4 @@
-// pages/api/admin/ChatHistory.ts
+// pages/api/admin/chatHistory.ts
 
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../../lib/dbConnect";
@@ -33,10 +33,11 @@ export default async function handler(
 
       res.status(200).json(chatHistories);
     } catch (error) {
-      console.error("Error retrieving chat history:", error);
-      res.status(500).json({ error: "Failed to retrieve chat history" });
+      console.error("Error retrieving chat histories:", error);
+      res.status(500).json({ error: "Failed to fetch chat histories" });
     }
   } else {
+    res.setHeader("Allow", ["GET"]);
     res.status(405).json({ error: "Method Not Allowed" });
   }
 }

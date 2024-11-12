@@ -9,7 +9,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  await dbConnect(); // Establish database connection
+  await dbConnect();
 
   if (req.method === "GET") {
     try {
@@ -17,6 +17,7 @@ export default async function handler(
       const completedChats = await ChatSession.countDocuments({
         isActive: false,
       });
+
       const ratings = await Rating.find({});
       const averageRating =
         ratings.length > 0
@@ -31,6 +32,7 @@ export default async function handler(
       return res.status(500).json({ error: "Failed to fetch chat statistics" });
     }
   } else {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    res.setHeader("Allow", ["GET"]);
+    res.status(405).json({ error: "Method Not Allowed" });
   }
 }

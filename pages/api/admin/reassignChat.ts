@@ -27,6 +27,7 @@ export default withRole("reassign_chats")(async (req, res) => {
       res.status(500).json({ error: "Failed to reassign chat" });
     }
   } else {
+    res.setHeader("Allow", ["PUT"]);
     res.status(405).json({ error: "Method Not Allowed" });
   }
 });

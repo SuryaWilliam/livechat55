@@ -8,6 +8,12 @@ interface Availability {
   endTime: string;
 }
 
+interface AutoResponseMessages {
+  queue: string;
+  assigned: string;
+  noAgent: string;
+}
+
 interface SystemSettingsData {
   maxQueueSize: number;
   notificationPreferences: string[];
@@ -15,11 +21,7 @@ interface SystemSettingsData {
   chatAutoCloseDuration: number;
   sessionTimeout: number;
   loggingLevel: string;
-  autoResponseMessages: {
-    queue: string;
-    assigned: string;
-    noAgent: string;
-  };
+  autoResponseMessages: AutoResponseMessages;
 }
 
 const SystemSettings = () => {
@@ -36,205 +38,73 @@ const SystemSettings = () => {
         if (!res.ok) throw new Error("Failed to load settings");
 
         const data = await res.json();
-        setSettings(data || defaultSettings);
+        setSettings(data);
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load system settings. Please try again.");
+        console.error("Error fetching system settings:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchSettings();
   }, []);
 
-  const updateSettings = async () => {
-    if (!settings) return;
-    try {
-      const res = await fetch("/api/owner/systemSettings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
-      if (!res.ok) throw new Error("Failed to save settings");
-
-      alert("Settings updated successfully!");
-    } catch (error) {
-      setError((error as Error).message);
-    }
-  };
-
-  if (loading) return <p>Loading settings...</p>;
+  if (loading) return <p>Loading system settings...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
       <h2 className="text-lg font-bold mb-4">System Settings</h2>
-
-      <label>Max Queue Size</label>
-      <input
-        type="number"
-        value={settings?.maxQueueSize || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev!,
-            maxQueueSize: parseInt(e.target.value, 10),
-          }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      />
-
-      <label>Notification Preferences</label>
-      <input
-        type="text"
-        value={settings?.notificationPreferences.join(", ") || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev!,
-            notificationPreferences: e.target.value.split(", "),
-          }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      />
-
-      <label>Chat Auto-Close Duration (minutes)</label>
-      <input
-        type="number"
-        value={settings?.chatAutoCloseDuration || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev!,
-            chatAutoCloseDuration: parseInt(e.target.value, 10),
-          }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      />
-
-      <label>Session Timeout (minutes)</label>
-      <input
-        type="number"
-        value={settings?.sessionTimeout || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev!,
-            sessionTimeout: parseInt(e.target.value, 10),
-          }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      />
-
-      <label>Logging Level</label>
-      <select
-        value={settings?.loggingLevel || "basic"}
-        onChange={(e) =>
-          setSettings((prev) => ({ ...prev!, loggingLevel: e.target.value }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      >
-        <option value="basic">Basic</option>
-        <option value="detailed">Detailed</option>
-        <option value="none">None</option>
-      </select>
-
-      <h3 className="text-md font-semibold mt-6">Auto-Response Messages</h3>
-
-      <label>Queue Message</label>
-      <textarea
-        value={settings?.autoResponseMessages.queue || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev!,
-            autoResponseMessages: {
-              ...prev!.autoResponseMessages,
-              queue: e.target.value,
-            },
-          }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      />
-
-      <label>Assigned Message</label>
-      <textarea
-        value={settings?.autoResponseMessages.assigned || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev!,
-            autoResponseMessages: {
-              ...prev!.autoResponseMessages,
-              assigned: e.target.value,
-            },
-          }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      />
-
-      <label>No Agent Available Message</label>
-      <textarea
-        value={settings?.autoResponseMessages.noAgent || ""}
-        onChange={(e) =>
-          setSettings((prev) => ({
-            ...prev!,
-            autoResponseMessages: {
-              ...prev!.autoResponseMessages,
-              noAgent: e.target.value,
-            },
-          }))
-        }
-        className="block w-full p-2 border rounded-md mb-4"
-      />
-
-      <h3 className="text-md font-semibold mt-6">Agent Availability</h3>
-      {settings?.agentAvailability.map((availability, index) => (
-        <div key={index} className="mb-4">
-          <label>Day</label>
-          <input
-            type="text"
-            value={availability.day}
-            onChange={(e) => {
-              const updatedAvailability = [...settings.agentAvailability];
-              updatedAvailability[index].day = e.target.value;
-              setSettings((prev) => ({
-                ...prev!,
-                agentAvailability: updatedAvailability,
-              }));
-            }}
-            className="block w-full p-2 border rounded-md mb-2"
-          />
-          <label>Start Time</label>
-          <input
-            type="time"
-            value={availability.startTime}
-            onChange={(e) => {
-              const updatedAvailability = [...settings.agentAvailability];
-              updatedAvailability[index].startTime = e.target.value;
-              setSettings((prev) => ({
-                ...prev!,
-                agentAvailability: updatedAvailability,
-              }));
-            }}
-            className="block w-full p-2 border rounded-md mb-2"
-          />
-          <label>End Time</label>
-          <input
-            type="time"
-            value={availability.endTime}
-            onChange={(e) => {
-              const updatedAvailability = [...settings.agentAvailability];
-              updatedAvailability[index].endTime = e.target.value;
-              setSettings((prev) => ({
-                ...prev!,
-                agentAvailability: updatedAvailability,
-              }));
-            }}
-            className="block w-full p-2 border rounded-md mb-4"
-          />
+      {settings && (
+        <div>
+          <p>
+            <strong>Max Queue Size:</strong> {settings.maxQueueSize}
+          </p>
+          <p>
+            <strong>Notification Preferences:</strong>{" "}
+            {settings.notificationPreferences.join(", ")}
+          </p>
+          <h3 className="font-semibold mt-4">Agent Availability:</h3>
+          <ul>
+            {settings.agentAvailability.map((availability, index) => (
+              <li key={index} className="mb-2">
+                <p>
+                  <strong>Day:</strong> {availability.day}
+                </p>
+                <p>
+                  <strong>Time:</strong> {availability.startTime} -{" "}
+                  {availability.endTime}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <p>
+            <strong>Chat Auto-Close Duration:</strong>{" "}
+            {settings.chatAutoCloseDuration} minutes
+          </p>
+          <p>
+            <strong>Session Timeout:</strong> {settings.sessionTimeout} minutes
+          </p>
+          <p>
+            <strong>Logging Level:</strong> {settings.loggingLevel}
+          </p>
+          <h3 className="font-semibold mt-4">Auto-Response Messages:</h3>
+          <ul>
+            <li>
+              <strong>Queue:</strong> {settings.autoResponseMessages.queue}
+            </li>
+            <li>
+              <strong>Assigned:</strong>{" "}
+              {settings.autoResponseMessages.assigned}
+            </li>
+            <li>
+              <strong>No Agent Available:</strong>{" "}
+              {settings.autoResponseMessages.noAgent}
+            </li>
+          </ul>
         </div>
-      ))}
-
-      <button
-        onClick={updateSettings}
-        className="py-2 px-4 bg-blue-500 text-white rounded-md mt-6"
-      >
-        Save Settings
-      </button>
+      )}
     </div>
   );
 };

@@ -8,19 +8,23 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  await dbConnect();
+  await dbConnect(); // Establish database connection
 
   if (req.method === "GET") {
+    const { agentId } = req.query;
+
     try {
       const activeChats = await ChatSession.find({
         isActive: true,
-        assignedAgent: req.query.agentId,
+        assignedAgent: agentId,
       });
-      res.status(200).json(activeChats);
+      return res.status(200).json(activeChats);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch active chats" });
+      console.error("Error fetching active chats for agent:", error);
+      return res.status(500).json({ error: "Failed to fetch active chats" });
     }
   } else {
+    res.setHeader("Allow", ["GET"]);
     res.status(405).json({ error: "Method Not Allowed" });
   }
 }

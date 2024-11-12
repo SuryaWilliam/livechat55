@@ -9,18 +9,28 @@ const AgentDashboard = () => {
   const [activeChats, setActiveChats] = useState([]);
   const [queuedChats, setQueuedChats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchChats = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const resActive = await fetch("/api/agent/activeChats");
-        const resQueued = await fetch("/api/agent/queuedChats");
+        const [resActive, resQueued] = await Promise.all([
+          fetch("/api/agent/activeChats"),
+          fetch("/api/agent/queuedChats"),
+        ]);
+
+        if (!resActive.ok || !resQueued.ok)
+          throw new Error("Failed to fetch chat data");
+
         const activeData = await resActive.json();
         const queuedData = await resQueued.json();
 
         setActiveChats(activeData);
         setQueuedChats(queuedData);
       } catch (error) {
+        setError("Error loading chats. Please try again.");
         console.error("Error fetching chats:", error);
       } finally {
         setLoading(false);
@@ -30,57 +40,49 @@ const AgentDashboard = () => {
     fetchChats();
   }, []);
 
-  if (loading) {
-    return <p>Loading agent dashboard...</p>;
-  }
-
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Agent Dashboard</h1>
       <AgentAvailabilityToggle />
       <AgentPerformanceAnalytics />
 
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold mb-2">Active Chats</h2>
-        {activeChats.length > 0 ? (
-          <ul>
-            {activeChats.map((chat) => (
-              <li key={chat._id} className="mb-2">
-                <p>
-                  <strong>{chat.username}</strong> - {chat.category}
-                </p>
-                <Link href={`/agent/chat/${chat._id}`}>
-                  <div className="text-blue-500 hover:underline">
-                    Go to Chat
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No active chats at the moment.</p>
-        )}
-      </div>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
 
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Queued Chats</h2>
-        {queuedChats.length > 0 ? (
-          <ul>
-            {queuedChats.map((chat) => (
-              <li key={chat._id} className="mb-2">
-                <p>
-                  <strong>{chat.username}</strong> - {chat.category}
-                </p>
-                <Link href={`/agent/chat/${chat._id}`}>
-                  <div className="text-blue-500 hover:underline">Join Chat</div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No queued chats.</p>
-        )}
-      </div>
+      {loading ? (
+        <p>Loading chats...</p>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Active Chats</h2>
+            <ul>
+              {activeChats.map((chat) => (
+                <li key={chat._id} className="mb-2">
+                  <Link href={`/agent/chat/${chat._id}`}>
+                    <a className="text-blue-500 underline">
+                      Chat with {chat.username}
+                    </a>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Queued Chats</h2>
+            <ul>
+              {queuedChats.map((chat) => (
+                <li key={chat._id} className="mb-2">
+                  <Link href={`/agent/chat/${chat._id}`}>
+                    <a className="text-blue-500 underline">
+                      Chat with {chat.username}
+                    </a>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

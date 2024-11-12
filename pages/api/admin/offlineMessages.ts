@@ -8,7 +8,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  await dbConnect(); // Establish a connection to the database
+  await dbConnect();
 
   if (req.method === "GET") {
     try {
@@ -32,7 +32,8 @@ export default async function handler(
         .status(500)
         .json({ error: "Failed to delete offline message" });
     }
+  } else {
+    res.setHeader("Allow", ["GET", "DELETE"]);
+    res.status(405).json({ error: "Method Not Allowed" });
   }
-
-  return res.status(405).json({ error: "Method Not Allowed" });
 }

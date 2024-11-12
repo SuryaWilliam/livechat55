@@ -24,11 +24,13 @@ const QueuedChats = () => {
         const data = await res.json();
         setQueuedChats(data);
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load queued chats. Please try again.");
+        console.error("Error fetching queued chats:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchQueuedChats();
   }, []);
 
@@ -37,19 +39,16 @@ const QueuedChats = () => {
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Queued Chats</h2>
+      <h2 className="text-lg font-bold mb-4">Queued Chats</h2>
       <ul>
         {queuedChats.map((chat) => (
-          <li key={chat._id} className="mb-2">
+          <li key={chat._id} className="mb-4 border-b pb-2">
             <p>
-              {chat.username} - {chat.category}
+              <strong>Username:</strong> {chat.username}
             </p>
-            <a
-              href={`/chat/${chat._id}`}
-              className="text-blue-500 hover:underline"
-            >
-              Join Chat
-            </a>
+            <p>
+              <strong>Category:</strong> {chat.category}
+            </p>
           </li>
         ))}
       </ul>

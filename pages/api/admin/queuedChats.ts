@@ -18,7 +18,8 @@ export default async function handler(
       console.error("Error fetching queued chats:", error);
       return res.status(500).json({ error: "Failed to fetch queued chats" });
     }
+  } else {
+    res.setHeader("Allow", ["GET"]);
+    res.status(405).json({ error: "Method Not Allowed" });
   }
-
-  return res.status(405).json({ error: "Method Not Allowed" });
 }

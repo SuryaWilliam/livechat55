@@ -8,7 +8,7 @@ interface IOfflineMessage extends Document {
   message: string;
 }
 
-const OfflineMessageSchema = new Schema({
+const OfflineMessageSchema = new Schema<IOfflineMessage>({
   username: { type: String, required: true },
   email: { type: String, required: true },
   message: { type: String, required: true },

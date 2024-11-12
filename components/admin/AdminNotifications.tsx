@@ -15,11 +15,15 @@ const AdminNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    socket.on("admin_notification", (notification: Notification) => {
+    const handleNotification = (notification: Notification) => {
       setNotifications((prev) => [notification, ...prev]);
-    });
+    };
 
-    return () => socket.disconnect();
+    socket.on("admin_notification", handleNotification);
+
+    return () => {
+      socket.off("admin_notification", handleNotification);
+    };
   }, []);
 
   return (
@@ -31,10 +35,10 @@ const AdminNotifications = () => {
             {notification.type === "queued_user" && (
               <p>A new user is queued. Position: {notification.position}</p>
             )}
-            {notification.type === "chat_ended" && <p>A chat has ended.</p>}
-            {notification.type === "offline_message" && (
-              <p>New offline message: {notification.message}</p>
+            {notification.type === "chat_ended" && (
+              <p>A chat session has ended.</p>
             )}
+            {notification.message && <p>{notification.message}</p>}
           </li>
         ))}
       </ul>

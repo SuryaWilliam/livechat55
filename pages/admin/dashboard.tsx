@@ -1,4 +1,4 @@
-// pages/admin/Dashboard.tsx
+// pages/admin/dashboard.tsx
 
 import ActiveChats from "../../components/admin/ActiveChats";
 import QueuedChats from "../../components/admin/QueuedChats";
@@ -17,7 +17,7 @@ const AdminDashboard = () => {
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
       <AdminNotifications />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <ActiveChats />
         <QueuedChats />
         <OfflineMessages />

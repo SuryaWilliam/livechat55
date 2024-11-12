@@ -7,7 +7,7 @@ interface IRole extends Document {
   permissions: string[];
 }
 
-const RoleSchema = new Schema({
+const RoleSchema = new Schema<IRole>({
   name: { type: String, required: true, unique: true },
   permissions: { type: [String], required: true },
 });

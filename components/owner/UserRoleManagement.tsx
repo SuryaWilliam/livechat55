@@ -38,68 +38,109 @@ const UserRoleManagement = () => {
         setUsers(await usersRes.json());
         setRoles(await rolesRes.json());
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load users or roles. Please try again.");
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchUsersAndRoles();
   }, []);
 
-  const updateUserRole = async () => {
+  const handleUpdateRole = async () => {
+    if (!selectedUser || !selectedRole) {
+      setError("Please select both a user and a role.");
+      return;
+    }
+
     try {
       const res = await fetch("/api/owner/userRoles", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: selectedUser, roleName: selectedRole }),
+        body: JSON.stringify({ userId: selectedUser, roleId: selectedRole }),
       });
-      if (!res.ok) throw new Error("Failed to update user role");
 
-      const updatedUser = await res.json();
-      alert(
-        `Role updated to ${selectedRole} for user ${updatedUser.user.name}`
+      if (!res.ok) throw new Error("Failed to update role");
+
+      setUsers((prevUsers) =>
+        prevUsers.map((user) =>
+          user._id === selectedUser
+            ? {
+                ...user,
+                role:
+                  roles.find((role) => role._id === selectedRole) || user.role,
+              }
+            : user
+        )
       );
+      setSelectedUser("");
+      setSelectedRole("");
     } catch (error) {
-      setError((error as Error).message);
+      setError("Could not update role. Please try again.");
+      console.error("Error updating role:", error);
     }
   };
 
-  if (loading) return <p>Loading data...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">User Role Management</h2>
-      <select
-        onChange={(e) => setSelectedUser(e.target.value)}
-        value={selectedUser}
-        className="w-full mb-2 p-2 border rounded-md"
-      >
-        <option value="">Select User</option>
-        {users.map((user) => (
-          <option key={user._id} value={user._id}>
-            {user.name} - {user.role.name}
-          </option>
-        ))}
-      </select>
-      <select
-        onChange={(e) => setSelectedRole(e.target.value)}
-        value={selectedRole}
-        className="w-full mb-2 p-2 border rounded-md"
-      >
-        <option value="">Select Role</option>
-        {roles.map((role) => (
-          <option key={role._id} value={role.name}>
-            {role.name}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={updateUserRole}
-        className="py-2 px-4 bg-blue-500 text-white rounded-md"
-      >
-        Update Role
-      </button>
+      <h2 className="text-lg font-bold mb-4">User Role Management</h2>
+
+      {error && <div className="text-red-500 mb-4">{error}</div>}
+
+      {loading ? (
+        <p>Loading users and roles...</p>
+      ) : (
+        <div>
+          <div className="mb-4">
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="border p-2 rounded mr-2"
+            >
+              <option value="">Select User</option>
+              {users.map((user) => (
+                <option key={user._id} value={user._id}>
+                  {user.name} - {user.role.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="border p-2 rounded"
+            >
+              <option value="">Select Role</option>
+              {roles.map((role) => (
+                <option key={role._id} value={role._id}>
+                  {role.name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={handleUpdateRole}
+              className="ml-2 px-4 py-2 bg-blue-500 text-white rounded"
+            >
+              Update Role
+            </button>
+          </div>
+
+          <ul>
+            {users.map((user) => (
+              <li key={user._id} className="mb-4 border-b pb-2">
+                <p>
+                  <strong>Name:</strong> {user.name}
+                </p>
+                <p>
+                  <strong>Role:</strong> {user.role.name}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

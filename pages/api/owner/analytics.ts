@@ -11,46 +11,39 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  await dbConnect(); // Connect to the database
+  await dbConnect();
 
   if (req.method === "GET") {
     try {
-      // Fetching total chats
       const totalChats = await ChatSession.countDocuments();
       const completedChats = await ChatSession.countDocuments({
         isActive: false,
       });
 
-      // Calculate average rating
-      const avgRating = await Rating.aggregate([
+      const avgRatingData = await Rating.aggregate([
         { $group: { _id: null, avg: { $avg: "$rating" } } },
       ]);
+      const avgRating = avgRatingData.length > 0 ? avgRatingData[0].avg : 0;
 
-      // Fetch total agents by role
       const agentRole = await Role.findOne({ name: "agent" });
-      const totalAgents = agentRole
-        ? await User.countDocuments({ role: agentRole._id })
-        : 0;
+      if (!agentRole) {
+        return res.status(404).json({ error: "Role 'agent' not found" });
+      }
 
-      const agentChats = await ChatSession.aggregate([
-        { $match: { isActive: false } },
-        { $group: { _id: "$assignedAgent", chats: { $sum: 1 } } },
-      ]);
+      const totalAgents = await User.countDocuments({ role: agentRole._id });
 
-      const analyticsData = {
+      res.status(200).json({
         totalChats,
         completedChats,
-        avgRating: avgRating[0]?.avg || 0,
-        agentChats,
+        avgRating,
         totalAgents,
-      };
-
-      res.status(200).json(analyticsData);
+      });
     } catch (error) {
-      console.error("Error fetching analytics data:", error);
-      res.status(500).json({ error: "Failed to fetch analytics data" });
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ error: "Failed to fetch analytics" });
     }
   } else {
+    res.setHeader("Allow", ["GET"]);
     res.status(405).json({ error: "Method Not Allowed" });
   }
 }

@@ -12,13 +12,8 @@ export default async function handler(
 
   try {
     if (req.method === "GET") {
-      try {
-        const users = await User.find({});
-        return res.status(200).json(users);
-      } catch (error) {
-        console.error("Error fetching users:", error);
-        return res.status(500).json({ error: "Failed to fetch users" });
-      }
+      const users = await User.find({});
+      return res.status(200).json(users);
     }
 
     if (req.method === "PUT") {
@@ -34,13 +29,19 @@ export default async function handler(
 
     if (req.method === "DELETE") {
       const { userId } = req.body;
-      await User.findByIdAndDelete(userId);
-      return res.status(204).end();
+      const user = await User.findByIdAndDelete(userId);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      return res.status(200).json({ message: "User deleted successfully" });
     }
 
+    res.setHeader("Allow", ["GET", "PUT", "DELETE"]);
     res.status(405).json({ error: "Method Not Allowed" });
   } catch (error) {
-    console.error("Error processing user request:", error);
-    res.status(500).json({ error: "Failed to process user request" });
+    console.error("Error handling user request:", error);
+    res.status(500).json({ error: "Server error" });
   }
 }

@@ -15,9 +15,15 @@ export default async function handler(
   if (req.method === "GET") {
     try {
       const agent = await User.findById(agentId);
-      res.status(200).json({ isAvailable: agent.isAvailable });
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      return res.status(200).json({ isAvailable: agent.isAvailable });
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch availability status." });
+      console.error("Error fetching agent availability:", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch availability status." });
     }
   } else if (req.method === "PUT") {
     const { isAvailable } = req.body;
@@ -28,11 +34,18 @@ export default async function handler(
         { isAvailable },
         { new: true }
       );
-      res.status(200).json({ isAvailable: agent.isAvailable });
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      return res.status(200).json({ isAvailable: agent.isAvailable });
     } catch (error) {
-      res.status(500).json({ error: "Failed to update availability status." });
+      console.error("Error updating agent availability:", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to update availability status." });
     }
   } else {
+    res.setHeader("Allow", ["GET", "PUT"]);
     res.status(405).json({ error: "Method Not Allowed" });
   }
 }

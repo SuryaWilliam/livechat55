@@ -1,16 +1,16 @@
 // models/ChatSession.ts
 
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 interface IChatSession extends Document {
   username: string;
   description: string;
   category: string;
   isActive: boolean;
-  assignedAgent?: mongoose.Types.ObjectId;
+  assignedAgent?: Types.ObjectId;
 }
 
-const ChatSessionSchema = new Schema({
+const ChatSessionSchema = new Schema<IChatSession>({
   username: { type: String, required: true },
   description: { type: String, required: true },
   category: { type: String, required: true },

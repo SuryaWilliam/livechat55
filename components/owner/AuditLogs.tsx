@@ -26,11 +26,13 @@ const AuditLogs = () => {
         const data = await res.json();
         setLogs(data);
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load audit logs. Please try again.");
+        console.error("Error fetching audit logs:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchLogs();
   }, []);
 
@@ -39,15 +41,22 @@ const AuditLogs = () => {
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Audit Logs</h2>
+      <h2 className="text-lg font-bold mb-4">Audit Logs</h2>
       <ul>
         {logs.map((log) => (
-          <li key={log._id} className="mb-1">
+          <li key={log._id} className="mb-4 border-b pb-2">
             <p>
-              <strong>{log.adminId}</strong> - {log.action}: {log.details} -{" "}
-              <span className="text-gray-600">
-                {new Date(log.timestamp).toLocaleString()}
-              </span>
+              <strong>Admin ID:</strong> {log.adminId}
+            </p>
+            <p>
+              <strong>Action:</strong> {log.action}
+            </p>
+            <p>
+              <strong>Details:</strong> {log.details}
+            </p>
+            <p>
+              <strong>Timestamp:</strong>{" "}
+              {new Date(log.timestamp).toLocaleString()}
             </p>
           </li>
         ))}

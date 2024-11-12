@@ -8,7 +8,9 @@ export const logAction = (action: string, details: string) => {
   return async (req: NextApiRequest, res: NextApiResponse, next: Function) => {
     const session = await getSession({ req });
 
-    if (!session) return res.status(403).json({ error: "Not authorized" });
+    if (!session) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
 
     try {
       const logEntry = new AuditLog({

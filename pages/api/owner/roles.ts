@@ -23,29 +23,38 @@ export default async function handler(
 
       case "POST":
         const { name, permissions } = req.body;
-        const newRole = new Role({ name, permissions });
-        await newRole.save();
-        return res.status(201).json(newRole);
+        try {
+          const newRole = new Role({ name, permissions });
+          await newRole.save();
+          return res.status(201).json(newRole);
+        } catch (error) {
+          console.error("Error creating role:", error);
+          return res.status(500).json({ error: "Failed to create role" });
+        }
 
       case "PUT":
         const { id, updatedName, updatedPermissions } = req.body;
-        const updatedRole = await Role.findByIdAndUpdate(
-          id,
-          { name: updatedName, permissions: updatedPermissions },
-          { new: true }
-        );
-        return res.status(200).json(updatedRole);
-
-      case "DELETE":
-        const { roleId } = req.body;
-        await Role.findByIdAndDelete(roleId);
-        return res.status(204).end();
+        try {
+          const updatedRole = await Role.findByIdAndUpdate(
+            id,
+            { name: updatedName, permissions: updatedPermissions },
+            { new: true }
+          );
+          if (!updatedRole) {
+            return res.status(404).json({ error: "Role not found" });
+          }
+          return res.status(200).json(updatedRole);
+        } catch (error) {
+          console.error("Error updating role:", error);
+          return res.status(500).json({ error: "Failed to update role" });
+        }
 
       default:
-        return res.status(405).json({ error: "Method Not Allowed" });
+        res.setHeader("Allow", ["GET", "POST", "PUT"]);
+        res.status(405).json({ error: "Method Not Allowed" });
     }
   } catch (error) {
-    console.error("Error handling role request:", error);
-    res.status(500).json({ error: "Failed to process role request" });
+    console.error("Unexpected error in roles handler:", error);
+    res.status(500).json({ error: "Server error" });
   }
 }

@@ -9,13 +9,17 @@ export default async function handler(
   res: NextApiResponse
 ) {
   await dbConnect();
+
   if (req.method === "GET") {
     try {
       const activeChats = await ChatSession.find({ isActive: true });
       return res.status(200).json(activeChats);
     } catch (error) {
+      console.error("Error fetching active chats:", error);
       return res.status(500).json({ error: "Failed to fetch active chats" });
     }
   }
+
+  res.setHeader("Allow", ["GET"]);
   res.status(405).json({ error: "Method Not Allowed" });
 }

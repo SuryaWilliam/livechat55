@@ -1,15 +1,15 @@
 // models/AuditLog.ts
 
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 interface IAuditLog extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId: Types.ObjectId;
   action: string;
   details: string;
   timestamp: Date;
 }
 
-const AuditLogSchema = new Schema({
+const AuditLogSchema = new Schema<IAuditLog>({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   action: { type: String, required: true },
   details: { type: String, required: true },

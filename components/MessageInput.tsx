@@ -29,6 +29,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
       <button
         onClick={handleSend}
         className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        aria-label="Send Message"
       >
         Send
       </button>

@@ -24,11 +24,13 @@ const ChatStatistics = () => {
         const data = await res.json();
         setStats(data);
       } catch (error) {
-        setError((error as Error).message);
+        setError("Could not load chat statistics. Please try again.");
+        console.error("Error fetching chat statistics:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchStats();
   }, []);
 
@@ -37,15 +39,13 @@ const ChatStatistics = () => {
 
   return (
     <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Chat Statistics</h2>
-      {stats ? (
-        <>
+      <h2 className="text-lg font-bold mb-4">Chat Statistics</h2>
+      {stats && (
+        <div>
           <p>Total Chats: {stats.totalChats}</p>
           <p>Completed Chats: {stats.completedChats}</p>
           <p>Average Rating: {stats.averageRating.toFixed(2)}</p>
-        </>
-      ) : (
-        <p>No statistics available.</p>
+        </div>
       )}
     </div>
   );

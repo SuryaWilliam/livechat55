@@ -14,10 +14,10 @@ export default async function handler(
 
   if (req.method === "GET") {
     try {
-      // Fetching report data: total chats, average response time, average rating, etc.
       const completedChats = await ChatSession.countDocuments({
         isActive: false,
       });
+
       const averageResponseTimeData = await Message.aggregate([
         {
           $group: {
@@ -26,22 +26,33 @@ export default async function handler(
           },
         },
       ]);
+
+      const avgResponseTime =
+        averageResponseTimeData.length > 0
+          ? averageResponseTimeData.reduce(
+              (sum, doc) => sum + doc.avgResponseTime,
+              0
+            ) / averageResponseTimeData.length
+          : 0;
+
       const avgRatingData = await Rating.aggregate([
         { $group: { _id: null, avgRating: { $avg: "$rating" } } },
       ]);
 
-      const reportData = {
-        completedChats,
-        averageResponseTime: averageResponseTimeData[0]?.avgResponseTime || 0,
-        avgRating: avgRatingData[0]?.avgRating || 0,
-      };
+      const avgRating =
+        avgRatingData.length > 0 ? avgRatingData[0].avgRating : 0;
 
-      return res.status(200).json(reportData);
+      res.status(200).json({
+        completedChats,
+        avgResponseTime,
+        avgRating,
+      });
     } catch (error) {
       console.error("Error generating report:", error);
-      return res.status(500).json({ error: "Failed to generate report" });
+      res.status(500).json({ error: "Failed to generate report" });
     }
   } else {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    res.setHeader("Allow", ["GET"]);
+    res.status(405).json({ error: "Method Not Allowed" });
   }
 }

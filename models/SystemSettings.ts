@@ -16,7 +16,7 @@ interface ISystemSettings extends Document {
   };
 }
 
-const SystemSettingsSchema = new Schema({
+const SystemSettingsSchema = new Schema<ISystemSettings>({
   maxQueueSize: { type: Number, default: 10 },
   notificationPreferences: { type: [String], default: ["email"] },
   agentAvailability: [{ day: String, startTime: String, endTime: String }],
@@ -28,15 +28,9 @@ const SystemSettingsSchema = new Schema({
     default: "basic",
   },
   autoResponseMessages: {
-    queue: {
-      type: String,
-      default: "Thank you for waiting. An agent will be with you soon.",
-    },
-    assigned: { type: String, default: "You are now connected to an agent." },
-    noAgent: {
-      type: String,
-      default: "No agents are available at the moment. Please try again later.",
-    },
+    queue: { type: String, default: "Thank you for waiting." },
+    assigned: { type: String, default: "An agent is now assigned to you." },
+    noAgent: { type: String, default: "No agent available. Please try later." },
   },
 });
 

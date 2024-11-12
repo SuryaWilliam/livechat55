@@ -8,11 +8,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  await dbConnect(); // Establish a connection to the database
+  await dbConnect(); // Establish database connection
 
   if (req.method === "GET") {
     try {
-      // Fetch the system settings document
       const settings = await SystemSettings.findOne({});
       return res.status(200).json(settings);
     } catch (error) {
@@ -44,14 +43,14 @@ export default async function handler(
         },
         { new: true, upsert: true }
       );
-      return res.status(200).json(updatedSettings);
+
+      res.status(200).json(updatedSettings);
     } catch (error) {
       console.error("Error updating system settings:", error);
-      return res
-        .status(500)
-        .json({ error: "Failed to update system settings" });
+      res.status(500).json({ error: "Failed to update system settings" });
     }
   } else {
-    return res.status(405).json({ error: "Method Not Allowed" });
+    res.setHeader("Allow", ["GET", "PUT"]);
+    res.status(405).json({ error: "Method Not Allowed" });
   }
 }

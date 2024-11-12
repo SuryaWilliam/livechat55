@@ -13,6 +13,8 @@ const ChatRating: React.FC<ChatRatingProps> = ({
 }) => {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const submitRating = async () => {
     if (rating < 1 || rating > 5) {
@@ -20,6 +22,8 @@ const ChatRating: React.FC<ChatRatingProps> = ({
       return;
     }
 
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/rating", {
         method: "POST",
@@ -30,41 +34,54 @@ const ChatRating: React.FC<ChatRatingProps> = ({
       if (res.ok) {
         onRatingSubmitted();
         alert("Thank you for your feedback!");
+        setRating(0);
+        setFeedback("");
       } else {
+        setError("Failed to submit rating. Please try again.");
         console.error("Failed to submit rating:", await res.text());
       }
     } catch (error) {
+      setError("Error submitting rating. Please try again.");
       console.error("Error submitting rating:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md max-w-md mx-auto mt-4">
-      <h2 className="text-lg font-bold mb-2">Rate Your Chat Experience</h2>
-      <div className="mb-2">
-        {[1, 2, 3, 4, 5].map((num) => (
-          <button
-            key={num}
-            onClick={() => setRating(num)}
-            className={`px-3 py-1 ${
-              rating === num ? "bg-yellow-400" : "bg-gray-200"
-            } rounded-md mx-1`}
-          >
-            {num}
-          </button>
-        ))}
+    <div className="p-4 bg-white shadow-md rounded-md">
+      <h3 className="text-lg font-bold mb-2">Rate Your Chat Experience</h3>
+
+      <div className="mb-4">
+        <label className="block font-semibold">Rating (1-5):</label>
+        <input
+          type="number"
+          min="1"
+          max="5"
+          value={rating}
+          onChange={(e) => setRating(parseInt(e.target.value))}
+          className="border p-2 rounded w-full"
+        />
       </div>
-      <textarea
-        value={feedback}
-        onChange={(e) => setFeedback(e.target.value)}
-        placeholder="Additional feedback (optional)"
-        className="w-full p-2 border rounded-md"
-      />
+
+      <div className="mb-4">
+        <label className="block font-semibold">Feedback (optional):</label>
+        <textarea
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          className="border p-2 rounded w-full"
+          placeholder="Share your experience..."
+        />
+      </div>
+
+      {error && <p className="text-red-500 mb-2">{error}</p>}
+
       <button
         onClick={submitRating}
-        className="w-full py-2 mt-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        disabled={loading}
+        className="px-4 py-2 bg-blue-500 text-white rounded"
       >
-        Submit Rating
+        {loading ? "Submitting..." : "Submit Rating"}
       </button>
     </div>
   );
