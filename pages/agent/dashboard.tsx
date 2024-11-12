@@ -58,9 +58,9 @@ const AgentDashboard = () => {
               {activeChats.map((chat) => (
                 <li key={chat._id} className="mb-2">
                   <Link href={`/agent/chat/${chat._id}`}>
-                    <a className="text-blue-500 underline">
+                    <div className="text-blue-500 underline">
                       Chat with {chat.username}
-                    </a>
+                    </div>
                   </Link>
                 </li>
               ))}
@@ -73,9 +73,9 @@ const AgentDashboard = () => {
               {queuedChats.map((chat) => (
                 <li key={chat._id} className="mb-2">
                   <Link href={`/agent/chat/${chat._id}`}>
-                    <a className="text-blue-500 underline">
+                    <div className="text-blue-500 underline">
                       Chat with {chat.username}
-                    </a>
+                    </div>
                   </Link>
                 </li>
               ))}
