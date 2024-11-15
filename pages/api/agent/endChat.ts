@@ -1,5 +1,3 @@
-// pages/api/agent/endChat.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../../lib/dbConnect";
 import ChatSession from "../../../models/ChatSession";
@@ -8,29 +6,37 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (req.method !== "PUT") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   await dbConnect();
 
-  if (req.method === "PUT") {
-    const { sessionId } = req.body;
+  const { sessionId, agentId } = req.body;
 
-    try {
-      const chat = await ChatSession.findByIdAndUpdate(
-        sessionId,
-        { isActive: false },
-        { new: true }
-      );
+  if (!sessionId || !agentId) {
+    return res
+      .status(400)
+      .json({ error: "Session ID and Agent ID are required." });
+  }
 
-      if (!chat) {
-        return res.status(404).json({ error: "Chat session not found" });
-      }
+  try {
+    const chatSession = await ChatSession.findOneAndUpdate(
+      { _id: sessionId, assignedAgent: agentId, isActive: true },
+      { isActive: false, endedAt: new Date() },
+      { new: true }
+    );
 
-      res.status(200).json(chat);
-    } catch (error) {
-      console.error("Error ending chat session:", error);
-      res.status(500).json({ error: "Failed to end chat" });
+    if (!chatSession) {
+      return res.status(404).json({
+        error: "Active chat session not found or not assigned to this agent.",
+      });
     }
-  } else {
-    res.setHeader("Allow", ["PUT"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+
+    res
+      .status(200)
+      .json({ message: "Chat session ended successfully.", chatSession });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to end chat session." });
   }
 }

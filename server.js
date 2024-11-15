@@ -1,58 +1,63 @@
-// server.js
-
 const express = require("express");
-const next = require("next");
 const http = require("http");
 const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
-const dev = process.env.NODE_ENV !== "production";
-const app = next({ dev });
-const handle = app.getRequestHandler();
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL, // Adjust to your client URL
+    methods: ["GET", "POST"],
+  },
+});
 
-let activeAgents = 2;
-let queue = [];
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.prepare().then(() => {
-  const server = express();
-  const httpServer = http.createServer(server);
-  const io = new Server(httpServer);
-
-  // MongoDB connection
-  mongoose
-    .connect(process.env.MONGODB_URI, {
+// MongoDB Connection
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    })
-    .then(() => console.log("Connected to MongoDB"))
-    .catch((error) => console.error("MongoDB connection error:", error));
-
-  // Socket.IO handlers
-  io.on("connection", (socket) => {
-    console.log("User connected:", socket.id);
-
-    socket.on("join_session", (sessionId) => {
-      socket.join(sessionId);
-      console.log(`User ${socket.id} joined session ${sessionId}`);
     });
+    console.log("MongoDB connected");
+  } catch (error) {
+    console.error("MongoDB connection error:", error.message);
+    process.exit(1);
+  }
+};
+connectDB();
 
-    socket.on("send_message", (message) => {
-      const { sessionId } = message;
-      io.to(sessionId).emit("new_message", message);
-    });
+// WebSocket Logic
+io.on("connection", (socket) => {
+  console.log(`User connected: ${socket.id}`);
 
-    socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
-    });
+  socket.on("join_room", (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${socket.id} joined room ${roomId}`);
   });
 
-  // Handle all other requests with Next.js
-  server.all("*", (req, res) => handle(req, res));
-
-  // Start the server
-  const PORT = process.env.PORT || 3000;
-  httpServer.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+  socket.on("send_message", (data) => {
+    const { roomId, message } = data;
+    io.to(roomId).emit("receive_message", message);
   });
+
+  socket.on("disconnect", () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
+
+// Health Check Route
+app.get("/", (req, res) => {
+  res.status(200).send("Server is running.");
+});
+
+// Start Server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

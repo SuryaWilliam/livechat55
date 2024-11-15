@@ -1,22 +1,27 @@
 // models/ChatSession.ts
-
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 interface IChatSession extends Document {
   username: string;
   description: string;
   category: string;
   isActive: boolean;
-  assignedAgent?: Types.ObjectId;
+  startedAt: Date;
+  endedAt?: Date;
 }
 
-const ChatSessionSchema = new Schema<IChatSession>({
+const ChatSessionSchema: Schema = new Schema<IChatSession>({
   username: { type: String, required: true },
   description: { type: String, required: true },
   category: { type: String, required: true },
   isActive: { type: Boolean, default: true },
-  assignedAgent: { type: Schema.Types.ObjectId, ref: "User" },
+  startedAt: { type: Date, default: Date.now },
+  endedAt: { type: Date }, // Optional, for when the chat ends
 });
 
-export default mongoose.models.ChatSession ||
+// Prevent model overwrite during hot reloads
+const ChatSession: Model<IChatSession> =
+  mongoose.models.ChatSession ||
   mongoose.model<IChatSession>("ChatSession", ChatSessionSchema);
+
+export default ChatSession;

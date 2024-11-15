@@ -1,25 +1,6 @@
-// pages/api/owner/systemSettings.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../../lib/dbConnect";
 import SystemSettings from "../../../models/SystemSettings";
-
-const defaultSettings = {
-  maxQueueSize: 10,
-  notificationPreferences: ["email"],
-  agentAvailability: [
-    { day: "Monday", startTime: "09:00", endTime: "17:00" },
-    { day: "Tuesday", startTime: "09:00", endTime: "17:00" },
-  ],
-  chatAutoCloseDuration: 30,
-  sessionTimeout: 15,
-  loggingLevel: "basic",
-  autoResponseMessages: {
-    queue: "Thank you for waiting. An agent will be with you soon.",
-    assigned: "You are now connected to an agent.",
-    noAgent: "No agents are available at the moment. Please try again later.",
-  },
-};
 
 export default async function handler(
   req: NextApiRequest,
@@ -29,32 +10,50 @@ export default async function handler(
 
   if (req.method === "GET") {
     try {
-      let settings = await SystemSettings.findOne({});
-      if (!settings) {
-        settings = new SystemSettings(defaultSettings);
-        await settings.save();
-      }
+      const settings = await SystemSettings.find().sort({ key: 1 }); // Sort by key alphabetically
       res.status(200).json(settings);
     } catch (error) {
-      console.error("Error fetching system settings:", error);
-      res.status(500).json({ error: "Failed to fetch system settings" });
+      res.status(500).json({ error: "Failed to fetch system settings." });
     }
-  } else if (req.method === "PUT") {
-    const updatedSettings = req.body;
+  } else if (req.method === "POST") {
+    const { key, value, description } = req.body;
+
+    if (!key || value === undefined) {
+      return res.status(400).json({ error: "Key and value are required." });
+    }
 
     try {
-      const settings = await SystemSettings.findOneAndUpdate(
-        {},
-        updatedSettings,
-        { new: true, upsert: true }
+      const updatedSetting = await SystemSettings.findOneAndUpdate(
+        { key },
+        { value, description },
+        { new: true, upsert: true } // Create the setting if it doesn't exist
       );
-      res.status(200).json(settings);
+      res.status(200).json({
+        message: "System setting updated successfully.",
+        updatedSetting,
+      });
     } catch (error) {
-      console.error("Error updating system settings:", error);
-      res.status(500).json({ error: "Failed to update system settings" });
+      res.status(500).json({ error: "Failed to update system setting." });
+    }
+  } else if (req.method === "DELETE") {
+    const { key } = req.body;
+
+    if (!key) {
+      return res.status(400).json({ error: "Key is required." });
+    }
+
+    try {
+      const deletedSetting = await SystemSettings.findOneAndDelete({ key });
+
+      if (!deletedSetting) {
+        return res.status(404).json({ error: "System setting not found." });
+      }
+
+      res.status(200).json({ message: "System setting deleted successfully." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete system setting." });
     }
   } else {
-    res.setHeader("Allow", ["GET", "PUT"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+    res.status(405).json({ error: "Method not allowed" });
   }
 }

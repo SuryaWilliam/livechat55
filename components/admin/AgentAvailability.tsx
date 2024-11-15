@@ -1,77 +1,49 @@
 // components/admin/AgentAvailability.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
-interface Agent {
-  _id: string;
+interface AgentStatus {
+  agentId: string;
   name: string;
   isAvailable: boolean;
 }
 
-const AgentAvailability = () => {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [error, setError] = useState<string | null>(null);
+const AgentAvailability: React.FC = () => {
+  const [agents, setAgents] = useState<AgentStatus[]>([]);
 
   useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        const res = await fetch("/api/admin/agents");
-        if (!res.ok) throw new Error("Failed to fetch agents");
+    // Fetch the initial agent statuses
+    socket.emit("get_agents_status");
 
-        const data = await res.json();
-        setAgents(Array.isArray(data) ? data : []);
-      } catch (err) {
-        setError("Could not load agent data. Please try again later.");
-        console.error("Error fetching agents:", err);
-      }
+    // Listen for updates to agent statuses
+    socket.on("agent_status_update", (updatedAgents: AgentStatus[]) => {
+      setAgents(updatedAgents);
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      socket.off("agent_status_update");
     };
-    fetchAgents();
   }, []);
 
-  const toggleAvailability = async (agentId: string, isAvailable: boolean) => {
-    try {
-      const res = await fetch("/api/admin/agents", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId, isAvailable: !isAvailable }),
-      });
-
-      if (!res.ok) throw new Error("Failed to update availability");
-
-      setAgents((prevAgents) =>
-        prevAgents.map((agent) =>
-          agent._id === agentId
-            ? { ...agent, isAvailable: !isAvailable }
-            : agent
-        )
-      );
-    } catch (error) {
-      setError("Failed to update agent availability. Please try again.");
-      console.error("Error updating availability:", error);
-    }
+  // Toggle agent availability
+  const toggleAvailability = (agentId: string, isAvailable: boolean) => {
+    socket.emit("toggle_agent_status", { agentId, isAvailable: !isAvailable });
   };
 
-  if (error) {
-    return <div className="error-message">{error}</div>;
-  }
-
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Agent Availability</h2>
+    <div>
+      <h3>Agent Availability</h3>
       <ul>
         {agents.map((agent) => (
-          <li
-            key={agent._id}
-            className="mb-2 flex justify-between items-center"
-          >
-            <span>{agent.name}</span>
+          <li key={agent.agentId}>
+            {agent.name} - {agent.isAvailable ? "Available" : "Unavailable"}
             <button
-              className={`px-4 py-2 rounded-md ${
-                agent.isAvailable ? "bg-green-500" : "bg-red-500"
-              } text-white`}
-              onClick={() => toggleAvailability(agent._id, agent.isAvailable)}
+              onClick={() =>
+                toggleAvailability(agent.agentId, agent.isAvailable)
+              }
             >
-              {agent.isAvailable ? "Available" : "Unavailable"}
+              {agent.isAvailable ? "Set Unavailable" : "Set Available"}
             </button>
           </li>
         ))}

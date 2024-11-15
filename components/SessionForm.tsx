@@ -1,81 +1,72 @@
 // components/SessionForm.tsx
-
 import { useState } from "react";
-import { useRouter } from "next/router";
+import socket from "../lib/socket";
 
-const SessionForm: React.FC = () => {
-  const [username, setUsername] = useState("");
+interface SessionFormProps {
+  onSessionCreated: (sessionId: string) => void; // Callback with the created session ID
+}
+
+const SessionForm: React.FC<SessionFormProps> = ({ onSessionCreated }) => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
-  const startChat = async () => {
-    if (!username || !description || !category) {
+  const handleSubmit = () => {
+    if (!name.trim() || !email.trim() || !description.trim()) {
       setError("All fields are required.");
       return;
     }
 
-    setError("");
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, description, category }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        router.push(`/chat/${data.sessionId}`);
-      } else {
-        setError(data.error || "Failed to start chat.");
+    socket.emit(
+      "create_session",
+      { name, email, description },
+      (response: { success: boolean; sessionId?: string }) => {
+        if (response.success && response.sessionId) {
+          onSessionCreated(response.sessionId);
+          setName("");
+          setEmail("");
+          setDescription("");
+          setError("");
+        } else {
+          setError("Failed to create a session. Please try again.");
+        }
       }
-    } catch (error) {
-      setError("Error starting chat. Please try again.");
-      console.error("Error starting chat:", error);
-    } finally {
-      setLoading(false);
-    }
+    );
   };
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Start a New Chat</h2>
-
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-
-      <input
-        type="text"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="Username"
-        className="border p-2 rounded w-full mb-2"
-      />
-      <input
-        type="text"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Describe your issue"
-        className="border p-2 rounded w-full mb-2"
-      />
-      <input
-        type="text"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-        placeholder="Category"
-        className="border p-2 rounded w-full mb-2"
-      />
-
-      <button
-        onClick={startChat}
-        disabled={loading}
-        className="px-4 py-2 bg-blue-500 text-white rounded"
-      >
-        {loading ? "Starting..." : "Start Chat"}
+    <div>
+      <h3>Start a New Chat</h3>
+      {error && <p className="error">{error}</p>}
+      <div className="form-group">
+        <label>Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your Name"
+        />
+      </div>
+      <div className="form-group">
+        <label>Email</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Your Email"
+        />
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe your issue or question"
+        />
+      </div>
+      <button onClick={handleSubmit} className="start-chat-button">
+        Start Chat
       </button>
     </div>
   );

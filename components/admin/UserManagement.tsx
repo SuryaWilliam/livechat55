@@ -1,97 +1,72 @@
 // components/admin/UserManagement.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
 interface User {
-  _id: string;
+  id: string;
   name: string;
   email: string;
   role: string;
   isActive: boolean;
 }
 
-const UserManagement = () => {
+const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/admin/users");
-        if (!res.ok) throw new Error("Failed to fetch users");
+    // Request initial user list
+    socket.emit("get_users");
 
-        const data = await res.json();
-        setUsers(data);
-      } catch (error) {
-        setError("Could not load users. Please try again.");
-        console.error("Error fetching users:", error);
-      } finally {
-        setLoading(false);
-      }
+    // Listen for user updates
+    socket.on("user_update", (updatedUsers: User[]) => {
+      setUsers(updatedUsers);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      socket.off("user_update");
     };
-
-    fetchUsers();
   }, []);
 
-  const toggleUserStatus = async (userId: string, isActive: boolean) => {
-    try {
-      const res = await fetch("/api/admin/users", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, isActive: !isActive }),
-      });
+  const handleActivateDeactivate = (userId: string, isActive: boolean) => {
+    socket.emit("update_user_status", { userId, isActive: !isActive });
+  };
 
-      if (!res.ok) throw new Error("Failed to update user status");
-
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user._id === userId ? { ...user, isActive: !isActive } : user
-        )
-      );
-    } catch (error) {
-      setError("Failed to update user status. Please try again.");
-      console.error("Error updating user status:", error);
-    }
+  const handleRoleChange = (userId: string, newRole: string) => {
+    socket.emit("update_user_role", { userId, role: newRole });
   };
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">User Management</h2>
-
-      {error && <div className="error-message mb-4">{error}</div>}
-
-      {loading ? (
-        <p>Loading users...</p>
-      ) : (
-        <ul>
-          {users.map((user) => (
-            <li key={user._id} className="mb-4 border-b pb-2">
-              <p>
-                <strong>Name:</strong> {user.name}
-              </p>
-              <p>
-                <strong>Email:</strong> {user.email}
-              </p>
-              <p>
-                <strong>Role:</strong> {user.role}
-              </p>
-              <p>
-                <strong>Status:</strong> {user.isActive ? "Active" : "Inactive"}
-              </p>
-              <button
-                onClick={() => toggleUserStatus(user._id, user.isActive)}
-                className={`mt-2 px-4 py-2 rounded text-white ${
-                  user.isActive ? "bg-red-500" : "bg-green-500"
-                }`}
-              >
-                {user.isActive ? "Deactivate" : "Activate"}
-              </button>
-            </li>
-          ))}
-        </ul>
+    <div>
+      <h3>User Management</h3>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>
+            <strong>{user.name}</strong> ({user.email}) - Role: {user.role} -{" "}
+            {user.isActive ? "Active" : "Inactive"}
+            <button
+              onClick={() => handleActivateDeactivate(user.id, user.isActive)}
+            >
+              {user.isActive ? "Deactivate" : "Activate"}
+            </button>
+            <button onClick={() => setSelectedUser(user)}>Edit Role</button>
+          </li>
+        ))}
+      </ul>
+      {selectedUser && (
+        <div>
+          <h4>Edit Role for {selectedUser.name}</h4>
+          <select
+            value={selectedUser.role}
+            onChange={(e) => handleRoleChange(selectedUser.id, e.target.value)}
+          >
+            <option value="admin">Admin</option>
+            <option value="agent">Agent</option>
+            <option value="user">User</option>
+          </select>
+          <button onClick={() => setSelectedUser(null)}>Close</button>
+        </div>
       )}
     </div>
   );

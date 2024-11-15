@@ -1,5 +1,3 @@
-// pages/api/owner/chatHistory.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../../lib/dbConnect";
 import ChatSession from "../../../models/ChatSession";
@@ -8,27 +6,24 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   await dbConnect();
 
-  if (req.method === "GET") {
-    try {
-      const { searchQuery } = req.query;
-      const query = searchQuery
-        ? { $text: { $search: searchQuery as string } }
-        : {};
+  try {
+    const { limit = 100, agentId } = req.query;
 
-      const chatSessions = await ChatSession.find(query)
-        .populate("assignedAgent", "name")
-        .sort({ createdAt: -1 })
-        .limit(50);
+    const filters: { [key: string]: any } = { isActive: false };
+    if (agentId) filters.assignedAgent = agentId;
 
-      res.status(200).json(chatSessions);
-    } catch (error) {
-      console.error("Error fetching chat history:", error);
-      res.status(500).json({ error: "Failed to fetch chat history" });
-    }
-  } else {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+    const chatHistory = await ChatSession.find(filters)
+      .sort({ endedAt: -1 })
+      .limit(Number(limit));
+
+    res.status(200).json(chatHistory);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch chat history." });
   }
 }

@@ -1,16 +1,20 @@
 // models/Role.ts
-
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 interface IRole extends Document {
-  name: string;
-  permissions: string[];
+  name: string; // Role name (e.g., "Admin", "Agent", "User")
+  permissions: string[]; // List of permissions assigned to the role
+  createdAt: Date; // When the role was created
 }
 
-const RoleSchema = new Schema<IRole>({
+const RoleSchema: Schema = new Schema<IRole>({
   name: { type: String, required: true, unique: true },
-  permissions: { type: [String], required: true },
+  permissions: { type: [String], required: true }, // Array of permission strings
+  createdAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.models.Role ||
-  mongoose.model<IRole>("Role", RoleSchema);
+// Prevent model overwrite during hot reloads
+const Role: Model<IRole> =
+  mongoose.models.Role || mongoose.model<IRole>("Role", RoleSchema);
+
+export default Role;

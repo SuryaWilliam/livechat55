@@ -1,57 +1,50 @@
-// pages/api/owner/agentAnalytics.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../../lib/dbConnect";
 import ChatSession from "../../../models/ChatSession";
-import User from "../../../models/User";
-import Role from "../../../models/Role";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   await dbConnect();
 
-  if (req.method === "GET") {
-    try {
-      const agentRole = await Role.findOne({ name: "agent" });
-      if (!agentRole) {
-        return res.status(404).json({ error: "Role 'agent' not found" });
-      }
+  try {
+    const { agentId } = req.query;
 
-      const agentData = await User.aggregate([
-        { $match: { role: agentRole._id } },
-        {
-          $lookup: {
-            from: "chatsessions",
-            localField: "_id",
-            foreignField: "assignedAgent",
-            as: "chats",
-          },
-        },
-        {
-          $addFields: {
-            totalChats: { $size: "$chats" },
-            avgResponseTime: { $avg: "$chats.responseTime" },
-          },
-        },
-        {
-          $project: {
-            _id: 1,
-            name: 1,
-            totalChats: 1,
-            avgResponseTime: 1,
-          },
-        },
-      ]);
-
-      res.status(200).json(agentData);
-    } catch (error) {
-      console.error("Error fetching agent analytics:", error);
-      res.status(500).json({ error: "Failed to fetch agent analytics" });
+    if (!agentId || typeof agentId !== "string") {
+      return res.status(400).json({ error: "Agent ID is required." });
     }
-  } else {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+
+    const totalChats = await ChatSession.countDocuments({
+      assignedAgent: agentId,
+    });
+    const resolvedChats = await ChatSession.countDocuments({
+      assignedAgent: agentId,
+      isActive: false,
+    });
+
+    const averageResolutionTime = await ChatSession.aggregate([
+      { $match: { assignedAgent: agentId, isActive: false } },
+      {
+        $group: {
+          _id: null,
+          avgResolutionTime: {
+            $avg: { $subtract: ["$endedAt", "$startedAt"] },
+          },
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      totalChats,
+      resolvedChats,
+      averageResolutionTime: averageResolutionTime[0]?.avgResolutionTime || 0,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch agent analytics data." });
   }
 }

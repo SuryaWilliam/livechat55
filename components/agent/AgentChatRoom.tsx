@@ -1,106 +1,82 @@
 // components/agent/AgentChatRoom.tsx
-
-import { useState, useEffect, useRef } from "react";
-import io from "socket.io-client";
-import MessageInput from "../MessageInput";
+import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
 interface Message {
   sender: string;
   content: string;
-  timestamp: string;
+  timestamp: Date;
 }
 
 interface AgentChatRoomProps {
   sessionId: string;
-  username: string;
+  user: string;
 }
 
-const socket = io();
-
-const AgentChatRoom = ({ sessionId, username }: AgentChatRoomProps) => {
+const AgentChatRoom: React.FC<AgentChatRoomProps> = ({ sessionId, user }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
-  const messageEndRef = useRef<HTMLDivElement | null>(null);
+  const [newMessage, setNewMessage] = useState("");
 
   useEffect(() => {
-    // Join the chat session via socket
-    socket.emit("join_chat", sessionId);
+    // Join the chat room
+    socket.emit("join_session", sessionId);
 
-    // Fetch initial chat history
-    const fetchMessages = async () => {
-      try {
-        const res = await fetch(`/api/message?sessionId=${sessionId}`);
-        if (!res.ok) throw new Error("Failed to load messages");
-
-        const data = await res.json();
-        setMessages(data.messages);
-      } catch (error) {
-        setError("Could not load chat history. Please try again.");
-        console.error("Error fetching messages:", error);
-      }
-    };
-    fetchMessages();
-
-    // Listen for incoming messages
-    socket.on("receive_message", (message: Message) => {
-      setMessages((prev) => [...prev, message]);
-      scrollToBottom();
+    // Listen for new messages
+    socket.on("new_message", (message: Message) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
     });
 
+    // Cleanup listener and leave room on unmount
     return () => {
-      socket.off("receive_message");
-      socket.emit("leave_chat", sessionId);
+      socket.emit("leave_session", sessionId);
+      socket.off("new_message");
     };
   }, [sessionId]);
 
-  const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const handleSendMessage = () => {
+    if (newMessage.trim()) {
+      const messageData = {
+        sessionId,
+        sender: "agent",
+        content: newMessage,
+        timestamp: new Date(),
+      };
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+      // Emit the message to the server
+      socket.emit("send_message", messageData);
 
-    const newMessage = {
-      sender: username,
-      content: input,
-      timestamp: new Date().toISOString(),
-    };
-
-    try {
-      socket.emit("send_message", { sessionId, message: newMessage });
-      setMessages((prev) => [...prev, newMessage]);
-      setInput("");
-      scrollToBottom();
-    } catch (error) {
-      setError("Failed to send message. Please try again.");
-      console.error("Error sending message:", error);
+      // Add the message to the local state
+      setMessages((prevMessages) => [...prevMessages, messageData]);
+      setNewMessage(""); // Clear the input field
     }
   };
 
   return (
-    <div className="chat-room p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Chat Room</h2>
-
-      {error && <div className="text-red-500 mb-2">{error}</div>}
-
-      <div className="messages mb-4">
+    <div>
+      <h3>Chat with {user}</h3>
+      <div className="chat-messages">
         {messages.map((msg, index) => (
-          <div key={index} className="message mb-2">
-            <p>
-              <strong>{msg.sender}</strong>: {msg.content}
-            </p>
-            <small>{new Date(msg.timestamp).toLocaleString()}</small>
+          <div
+            key={index}
+            className={`message ${
+              msg.sender === "agent" ? "agent-message" : "user-message"
+            }`}
+          >
+            <strong>{msg.sender === "agent" ? "You" : user}:</strong>{" "}
+            {msg.content}
+            <span className="timestamp">
+              {new Date(msg.timestamp).toLocaleTimeString()}
+            </span>
           </div>
         ))}
-        <div ref={messageEndRef} />
       </div>
-
-      <MessageInput
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onSend={handleSendMessage}
+      <input
+        type="text"
+        value={newMessage}
+        onChange={(e) => setNewMessage(e.target.value)}
+        placeholder="Type your message"
       />
+      <button onClick={handleSendMessage}>Send</button>
     </div>
   );
 };

@@ -1,36 +1,56 @@
 // components/MessageInput.tsx
-
 import { useState } from "react";
+import socket from "../lib/socket";
 
 interface MessageInputProps {
-  onSendMessage: (content: string) => void;
+  sessionId: string; // Chat session ID
+  onMessageSent?: (message: string) => void; // Optional callback when a message is sent
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
-  const [input, setInput] = useState("");
+const MessageInput: React.FC<MessageInputProps> = ({
+  sessionId,
+  onMessageSent,
+}) => {
+  const [message, setMessage] = useState("");
 
-  const handleSend = () => {
-    if (input.trim()) {
-      onSendMessage(input.trim());
-      setInput("");
+  const handleSendMessage = () => {
+    if (message.trim()) {
+      const messageData = {
+        sessionId,
+        sender: "user", // Adjust for agents if needed
+        content: message,
+        timestamp: new Date(),
+      };
+
+      // Emit the message to the server
+      socket.emit("send_message", messageData);
+
+      // Call the callback if provided
+      if (onMessageSent) {
+        onMessageSent(message);
+      }
+
+      setMessage(""); // Clear the input field
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSendMessage();
     }
   };
 
   return (
-    <div className="flex items-center p-2 border-t border-gray-300">
+    <div className="message-input">
       <input
         type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSend()}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        onKeyPress={handleKeyPress}
         placeholder="Type a message..."
-        className="flex-1 p-2 border rounded-md focus:outline-none"
+        className="message-input-field"
       />
-      <button
-        onClick={handleSend}
-        className="ml-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-        aria-label="Send Message"
-      >
+      <button onClick={handleSendMessage} className="send-message-button">
         Send
       </button>
     </div>

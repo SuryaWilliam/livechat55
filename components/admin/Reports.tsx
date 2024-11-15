@@ -1,52 +1,46 @@
 // components/admin/Reports.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
-interface ReportData {
-  completedChats: number;
-  averageResponseTime: number;
-  avgRating: number;
+interface Report {
+  title: string;
+  value: number;
+  lastUpdated: Date;
 }
 
-const Reports = () => {
-  const [report, setReport] = useState<ReportData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const Reports: React.FC = () => {
+  const [reports, setReports] = useState<Report[]>([]);
 
   useEffect(() => {
-    const fetchReport = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/admin/reports");
-        if (!res.ok) throw new Error("Failed to fetch reports");
+    // Request initial report data
+    socket.emit("get_reports");
 
-        const data = await res.json();
-        setReport(data);
-      } catch (error) {
-        setError("Could not load report data. Please try again.");
-        console.error("Error fetching report data:", error);
-      } finally {
-        setLoading(false);
-      }
+    // Listen for updates to reports
+    socket.on("report_update", (updatedReports: Report[]) => {
+      setReports(updatedReports);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      socket.off("report_update");
     };
-
-    fetchReport();
   }, []);
 
-  if (loading) return <p>Loading report data...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Reports</h2>
-      {report && (
-        <div>
-          <p>Completed Chats: {report.completedChats}</p>
-          <p>Average Response Time: {report.averageResponseTime} seconds</p>
-          <p>Average Rating: {report.avgRating.toFixed(2)}</p>
-        </div>
-      )}
+    <div>
+      <h3>Reports</h3>
+      <ul>
+        {reports.map((report) => (
+          <li key={report.title}>
+            <strong>{report.title}</strong>: {report.value}
+            <span>
+              {" "}
+              (Last updated: {new Date(report.lastUpdated).toLocaleTimeString()}
+              )
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

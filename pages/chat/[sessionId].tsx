@@ -1,70 +1,51 @@
-// pages/chat/[sessionId].tsx
-
 import { useRouter } from "next/router";
-import { useEffect, useState } from "react";
-import io, { Socket } from "socket.io-client";
-import ChatBox from "../../components/ChatBox";
-import MessageInput from "../../components/MessageInput";
+import { useState, useEffect } from "react";
+import ChatRoom from "../../components/chat/ChatRoom";
+import ChatHeader from "../../components/chat/ChatHeader";
+import ChatFooter from "../../components/chat/ChatFooter";
 
-let socket: Socket;
-
-const ChatRoom = () => {
+const ChatPage = () => {
   const router = useRouter();
   const { sessionId } = router.query;
-  const [messages, setMessages] = useState([]);
-  const [error, setError] = useState("");
+
+  const [chatDetails, setChatDetails] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!sessionId) return;
-
-    socket = io();
-
-    socket.emit("join_session", sessionId);
-
-    socket.on("new_message", (message) => {
-      setMessages((prev) => [...prev, message]);
-    });
-
-    const fetchMessages = async () => {
-      try {
-        const res = await fetch(`/api/message?sessionId=${sessionId}`);
-        const data = await res.json();
-
-        if (res.ok) {
-          setMessages(data.messages);
-        } else {
-          setError("Failed to load messages");
-        }
-      } catch (err) {
-        setError("Error loading messages");
-        console.error("Error fetching messages:", err);
-      }
-    };
-
-    fetchMessages();
-
-    return () => {
-      socket.off("new_message");
-      socket.disconnect();
-    };
+    if (sessionId) {
+      fetch(`/api/session?sessionId=${sessionId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.error) {
+            console.error(data.error);
+            setChatDetails(null);
+          } else {
+            setChatDetails(data);
+          }
+          setLoading(false);
+        })
+        .catch((err) => {
+          console.error("Error fetching chat session:", err);
+          setLoading(false);
+        });
+    }
   }, [sessionId]);
 
-  const handleSendMessage = (content: string) => {
-    const message = { sender: "user", content };
-    socket.emit("send_message", message);
-    setMessages((prev) => [...prev, message]);
-  };
+  if (loading) {
+    return <div>Loading chat session...</div>;
+  }
+
+  if (!chatDetails) {
+    return <div>Chat session not found.</div>;
+  }
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">
-        Chat Room - Session {sessionId}
-      </h2>
-      {error && <p className="text-red-500">{error}</p>}
-      <ChatBox messages={messages} />
-      <MessageInput onSendMessage={handleSendMessage} />
+    <div className="chat-page">
+      <ChatHeader session={chatDetails} />
+      <ChatRoom sessionId={sessionId} />
+      <ChatFooter sessionId={sessionId} />
     </div>
   );
 };
 
-export default ChatRoom;
+export default ChatPage;

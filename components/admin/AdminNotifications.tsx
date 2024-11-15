@@ -1,44 +1,50 @@
 // components/admin/AdminNotifications.tsx
-
 import { useEffect, useState } from "react";
-import io from "socket.io-client";
-
-const socket = io();
+import socket from "../../lib/socket";
 
 interface Notification {
-  type: string;
-  message?: string;
-  position?: number;
+  message: string;
+  timestamp: Date;
 }
 
-const AdminNotifications = () => {
+const AdminNotifications: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    const handleNotification = (notification: Notification) => {
-      setNotifications((prev) => [notification, ...prev]);
-    };
+    // Listen for new session notifications
+    socket.on("new_session", (notification: Notification) => {
+      setNotifications((prevNotifications) => [
+        notification,
+        ...prevNotifications,
+      ]);
+    });
 
-    socket.on("admin_notification", handleNotification);
+    // Listen for other relevant notifications (if any)
+    socket.on("user_request", (notification: Notification) => {
+      setNotifications((prevNotifications) => [
+        notification,
+        ...prevNotifications,
+      ]);
+    });
 
+    // Cleanup listeners on unmount
     return () => {
-      socket.off("admin_notification", handleNotification);
+      socket.off("new_session");
+      socket.off("user_request");
     };
   }, []);
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md mb-4">
-      <h2 className="text-lg font-bold mb-2">Notifications</h2>
+    <div>
+      <h3>Notifications</h3>
       <ul>
         {notifications.map((notification, index) => (
-          <li key={index} className="mb-1">
-            {notification.type === "queued_user" && (
-              <p>A new user is queued. Position: {notification.position}</p>
-            )}
-            {notification.type === "chat_ended" && (
-              <p>A chat session has ended.</p>
-            )}
-            {notification.message && <p>{notification.message}</p>}
+          <li key={index}>
+            <strong>{notification.message}</strong>
+            <span>
+              {" "}
+              - {new Date(notification.timestamp).toLocaleTimeString()}
+            </span>
           </li>
         ))}
       </ul>

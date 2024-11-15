@@ -1,38 +1,26 @@
-// models/SystemSettings.ts
-
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 interface ISystemSettings extends Document {
-  maxQueueSize: number;
-  notificationPreferences: string[];
-  agentAvailability: { day: string; startTime: string; endTime: string }[];
-  chatAutoCloseDuration: number;
-  sessionTimeout: number;
-  loggingLevel: "basic" | "detailed" | "none";
-  autoResponseMessages: {
-    queue: string;
-    assigned: string;
-    noAgent: string;
-  };
+  key: string; // Unique identifier for the setting
+  value: string | number | boolean; // Setting value
+  description?: string; // Optional description of the setting
+  updatedAt: Date; // Last update timestamp
 }
 
-const SystemSettingsSchema = new Schema<ISystemSettings>({
-  maxQueueSize: { type: Number, default: 10 },
-  notificationPreferences: { type: [String], default: ["email"] },
-  agentAvailability: [{ day: String, startTime: String, endTime: String }],
-  chatAutoCloseDuration: { type: Number, default: 30 },
-  sessionTimeout: { type: Number, default: 15 },
-  loggingLevel: {
-    type: String,
-    enum: ["basic", "detailed", "none"],
-    default: "basic",
-  },
-  autoResponseMessages: {
-    queue: { type: String, default: "Thank you for waiting." },
-    assigned: { type: String, default: "An agent is now assigned to you." },
-    noAgent: { type: String, default: "No agent available. Please try later." },
-  },
+const SystemSettingsSchema: Schema = new Schema<ISystemSettings>({
+  key: { type: String, required: true, unique: true },
+  value: { type: Schema.Types.Mixed, required: true }, // Supports string, number, or boolean
+  description: { type: String, default: "" },
+  updatedAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.models.SystemSettings ||
+SystemSettingsSchema.pre("save", function (next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+const SystemSettings: Model<ISystemSettings> =
+  mongoose.models.SystemSettings ||
   mongoose.model<ISystemSettings>("SystemSettings", SystemSettingsSchema);
+
+export default SystemSettings;

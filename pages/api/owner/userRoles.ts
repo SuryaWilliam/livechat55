@@ -1,9 +1,7 @@
-// pages/api/owner/userRoles.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../../lib/dbConnect";
-import User from "../../../models/User";
 import Role from "../../../models/Role";
+import User from "../../../models/User";
 
 export default async function handler(
   req: NextApiRequest,
@@ -11,36 +9,47 @@ export default async function handler(
 ) {
   await dbConnect();
 
-  if (req.method === "PUT") {
-    const { userId, roleName } = req.body;
+  if (req.method === "GET") {
+    try {
+      const roles = await Role.find().sort({ name: 1 }); // Fetch all roles, sorted alphabetically by name
+      res.status(200).json(roles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch roles." });
+    }
+  } else if (req.method === "PUT") {
+    const { userId, roleId } = req.body;
+
+    if (!userId || !roleId) {
+      return res
+        .status(400)
+        .json({ error: "User ID and Role ID are required." });
+    }
 
     try {
-      // Find the role by name
-      const role = await Role.findOne({ name: roleName });
+      const role = await Role.findById(roleId);
+
       if (!role) {
-        return res.status(404).json({ error: `Role '${roleName}' not found` });
+        return res.status(404).json({ error: "Role not found." });
       }
 
-      // Update the user’s role
-      const user = await User.findByIdAndUpdate(
+      const updatedUser = await User.findByIdAndUpdate(
         userId,
-        { role: role._id },
+        { role: role.name },
         { new: true }
       );
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+
+      if (!updatedUser) {
+        return res.status(404).json({ error: "User not found." });
       }
 
       res.status(200).json({
-        message: `Role updated to '${roleName}' for user ${user.name}`,
-        user,
+        message: "User role updated successfully.",
+        user: updatedUser,
       });
     } catch (error) {
-      console.error("Error updating user role:", error);
-      res.status(500).json({ error: "Failed to update user role" });
+      res.status(500).json({ error: "Failed to update user role." });
     }
   } else {
-    res.setHeader("Allow", ["PUT"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+    res.status(405).json({ error: "Method not allowed" });
   }
 }

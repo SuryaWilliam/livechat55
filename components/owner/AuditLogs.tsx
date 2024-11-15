@@ -1,63 +1,39 @@
 // components/owner/AuditLogs.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
 interface AuditLog {
-  _id: string;
-  adminId: string;
   action: string;
-  details: string;
-  timestamp: string;
+  performedBy: string;
+  timestamp: Date;
 }
 
-const AuditLogs = () => {
+const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/owner/auditLogs");
-        if (!res.ok) throw new Error("Failed to fetch audit logs");
+    // Request initial audit logs
+    socket.emit("get_audit_logs");
 
-        const data = await res.json();
-        setLogs(data);
-      } catch (error) {
-        setError("Could not load audit logs. Please try again.");
-        console.error("Error fetching audit logs:", error);
-      } finally {
-        setLoading(false);
-      }
+    // Listen for new audit logs
+    socket.on("new_audit_log", (log: AuditLog) => {
+      setLogs((prevLogs) => [log, ...prevLogs]);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      socket.off("new_audit_log");
     };
-
-    fetchLogs();
   }, []);
 
-  if (loading) return <p>Loading audit logs...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Audit Logs</h2>
+    <div>
+      <h3>Audit Logs</h3>
       <ul>
-        {logs.map((log) => (
-          <li key={log._id} className="mb-4 border-b pb-2">
-            <p>
-              <strong>Admin ID:</strong> {log.adminId}
-            </p>
-            <p>
-              <strong>Action:</strong> {log.action}
-            </p>
-            <p>
-              <strong>Details:</strong> {log.details}
-            </p>
-            <p>
-              <strong>Timestamp:</strong>{" "}
-              {new Date(log.timestamp).toLocaleString()}
-            </p>
+        {logs.map((log, index) => (
+          <li key={index}>
+            <strong>{log.action}</strong> by {log.performedBy} at{" "}
+            {new Date(log.timestamp).toLocaleString()}
           </li>
         ))}
       </ul>

@@ -1,100 +1,81 @@
 // components/admin/AdminChatInterface.tsx
+import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
-import { useState, useEffect } from "react";
-import io from "socket.io-client";
-
-const socket = io();
-
-interface Message {
+interface ChatMessage {
   sender: string;
   content: string;
-  timestamp: string;
+  timestamp: Date;
 }
 
 interface AdminChatInterfaceProps {
   sessionId: string;
 }
 
-const AdminChatInterface = ({ sessionId }: AdminChatInterfaceProps) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [reply, setReply] = useState("");
-  const [error, setError] = useState<string | null>(null);
+const AdminChatInterface: React.FC<AdminChatInterfaceProps> = ({
+  sessionId,
+}) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const res = await fetch(`/api/chats/${sessionId}/messages`);
-        if (!res.ok) {
-          throw new Error("Failed to fetch messages");
-        }
-        const data = await res.json();
-        setMessages(data.messages);
-      } catch (error) {
-        setError("Could not load messages. Please try again.");
-        console.error("Error fetching messages:", error);
-      }
-    };
+    // Join the chat room for the selected session
+    socket.emit("join_session", sessionId);
 
-    fetchMessages();
-
-    // Listen for new messages
-    socket.on("newMessage", (newMessage: Message) => {
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
+    // Listen for incoming messages
+    socket.on("new_message", (message: ChatMessage) => {
+      setMessages((prevMessages) => [...prevMessages, message]);
     });
 
+    // Cleanup: leave session on component unmount
     return () => {
-      socket.off("newMessage");
+      socket.emit("leave_session", sessionId);
+      socket.off("new_message");
     };
   }, [sessionId]);
 
-  const handleReplyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setReply(e.target.value);
-  };
+  // Send a message to the chat session
+  const handleSendMessage = () => {
+    if (newMessage.trim()) {
+      const messageData = {
+        sessionId,
+        sender: "admin",
+        content: newMessage,
+        timestamp: new Date(),
+      };
 
-  const handleSendMessage = async () => {
-    if (!reply.trim()) return;
-    try {
-      await fetch(`/api/chats/${sessionId}/messages`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: reply }),
-      });
-      setReply("");
-    } catch (error) {
-      console.error("Error sending message:", error);
-      setError("Failed to send message.");
+      // Emit message to server
+      socket.emit("send_message", messageData);
+      setMessages((prevMessages) => [...prevMessages, messageData]);
+      setNewMessage(""); // Clear input field
     }
   };
 
-  if (error) {
-    return <div className="error-message">{error}</div>;
-  }
-
   return (
     <div>
-      <h1>Admin Chat Interface</h1>
-      <div className="messages">
+      <h3>Chat with User</h3>
+      <div className="message-area">
         {messages.map((msg, index) => (
-          <div key={index} className="message">
-            <p>
-              <strong>{msg.sender}</strong>: {msg.content}
-            </p>
-            <p className="timestamp">{msg.timestamp}</p>
+          <div
+            key={index}
+            className={`message ${
+              msg.sender === "admin" ? "admin-message" : "user-message"
+            }`}
+          >
+            <span>{msg.content}</span>
+            <span className="timestamp">
+              {new Date(msg.timestamp).toLocaleTimeString()}
+            </span>
           </div>
         ))}
       </div>
-
-      <div className="reply-box">
-        <input
-          type="text"
-          value={reply}
-          onChange={handleReplyChange}
-          placeholder="Type a reply..."
-        />
-        <button onClick={handleSendMessage}>Send</button>
-      </div>
+      <input
+        type="text"
+        value={newMessage}
+        onChange={(e) => setNewMessage(e.target.value)}
+        placeholder="Type a message"
+      />
+      <button onClick={handleSendMessage}>Send</button>
     </div>
   );
 };

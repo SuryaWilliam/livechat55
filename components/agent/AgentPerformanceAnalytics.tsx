@@ -1,56 +1,48 @@
 // components/agent/AgentPerformanceAnalytics.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
 interface PerformanceData {
-  totalChats: number;
-  avgResponseTime: number;
-  avgRating: number;
+  resolvedChats: number;
+  averageResponseTime: number; // in seconds
+  rating: number; // out of 5
 }
 
-const AgentPerformanceAnalytics = () => {
-  const [performanceData, setPerformanceData] =
-    useState<PerformanceData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const AgentPerformanceAnalytics: React.FC = () => {
+  const [performance, setPerformance] = useState<PerformanceData>({
+    resolvedChats: 0,
+    averageResponseTime: 0,
+    rating: 0,
+  });
 
   useEffect(() => {
-    const fetchPerformanceData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/agent/performance");
-        if (!res.ok) throw new Error("Failed to fetch performance data.");
+    // Request initial performance metrics
+    socket.emit("get_agent_performance");
 
-        const data = await res.json();
-        setPerformanceData(data);
-      } catch (error) {
-        setError("Could not load performance data. Please try again.");
-        console.error("Error fetching performance data:", error);
-      } finally {
-        setLoading(false);
+    // Listen for performance updates
+    socket.on(
+      "agent_performance_update",
+      (updatedPerformance: PerformanceData) => {
+        setPerformance(updatedPerformance);
       }
-    };
+    );
 
-    fetchPerformanceData();
+    // Cleanup listener on unmount
+    return () => {
+      socket.off("agent_performance_update");
+    };
   }, []);
 
-  if (loading) return <p>Loading performance data...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-2">Performance Analytics</h2>
-      {performanceData && (
-        <div>
-          <p>Total Chats: {performanceData.totalChats}</p>
-          <p>
-            Average Response Time: {performanceData.avgResponseTime.toFixed(2)}{" "}
-            seconds
-          </p>
-          <p>Average Rating: {performanceData.avgRating.toFixed(2)}</p>
-        </div>
-      )}
+    <div>
+      <h3>My Performance</h3>
+      <ul>
+        <li>Resolved Chats: {performance.resolvedChats}</li>
+        <li>
+          Average Response Time: {performance.averageResponseTime} seconds
+        </li>
+        <li>Rating: {performance.rating.toFixed(2)} / 5</li>
+      </ul>
     </div>
   );
 };

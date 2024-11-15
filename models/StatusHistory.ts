@@ -1,18 +1,25 @@
 // models/StatusHistory.ts
-
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 interface IStatusHistory extends Document {
-  agentId: Types.ObjectId;
-  status: "available" | "unavailable";
-  timestamp: Date;
+  entityId: string; // ID of the entity (e.g., chat session, user)
+  entityType: string; // Type of the entity (e.g., "ChatSession", "User")
+  status: string; // The new status (e.g., "Active", "Resolved", "Inactive")
+  changedBy: string; // User ID or name of the person making the change
+  changedAt: Date; // When the status was changed
 }
 
-const StatusHistorySchema = new Schema<IStatusHistory>({
-  agentId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  status: { type: String, enum: ["available", "unavailable"], required: true },
-  timestamp: { type: Date, default: Date.now },
+const StatusHistorySchema: Schema = new Schema<IStatusHistory>({
+  entityId: { type: String, required: true }, // ID of the entity being tracked
+  entityType: { type: String, required: true }, // Type of the entity
+  status: { type: String, required: true }, // New status value
+  changedBy: { type: String, required: true }, // Who made the change
+  changedAt: { type: Date, default: Date.now }, // Timestamp of the change
 });
 
-export default mongoose.models.StatusHistory ||
+// Prevent model overwrite during hot reloads
+const StatusHistory: Model<IStatusHistory> =
+  mongoose.models.StatusHistory ||
   mongoose.model<IStatusHistory>("StatusHistory", StatusHistorySchema);
+
+export default StatusHistory;

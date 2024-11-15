@@ -17,6 +17,12 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "context/SocketContext.tsx",
+    "components/AdminChatInterface.ts"
+, "next.config.ts", "server.js", "lib/socket.ts"  ],
   "exclude": ["node_modules"]
 }

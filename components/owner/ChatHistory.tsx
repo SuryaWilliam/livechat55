@@ -1,94 +1,58 @@
 // components/owner/ChatHistory.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
-interface ChatSession {
-  _id: string;
-  username: string;
-  assignedAgent?: { name: string };
-  createdAt: string;
+interface ChatHistoryEntry {
+  sessionId: string;
+  user: string;
+  agent: string;
+  messages: Array<{ sender: string; content: string; timestamp: Date }>;
+  resolvedAt?: Date;
 }
 
-const ChatHistory = () => {
-  const [chats, setChats] = useState<ChatSession[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchChats = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/owner/chatHistory?searchQuery=${searchQuery}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch chat history");
-
-      const data = await res.json();
-      setChats(data);
-    } catch (error) {
-      setError("Could not load chat history. Please try again.");
-      console.error("Error fetching chat history:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const ChatHistory: React.FC = () => {
+  const [chatHistory, setChatHistory] = useState<ChatHistoryEntry[]>([]);
 
   useEffect(() => {
-    fetchChats();
+    // Request initial chat history
+    socket.emit("get_chat_history");
+
+    // Listen for updates to the chat history
+    socket.on("chat_history_update", (updatedHistory: ChatHistoryEntry[]) => {
+      setChatHistory(updatedHistory);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      socket.off("chat_history_update");
+    };
   }, []);
 
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleSearch = () => {
-    fetchChats();
-  };
-
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Chat History</h2>
-
-      <div className="mb-4">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={handleSearchInputChange}
-          placeholder="Search by username or agent name"
-          className="border p-2 rounded mr-2"
-        />
-        <button
-          onClick={handleSearch}
-          className="px-4 py-2 bg-blue-500 text-white rounded"
-        >
-          Search
-        </button>
-      </div>
-
-      {error && <div className="text-red-500 mb-2">{error}</div>}
-
-      {loading ? (
-        <p>Loading chat history...</p>
-      ) : (
-        <ul>
-          {chats.map((chat) => (
-            <li key={chat._id} className="mb-4 border-b pb-2">
-              <p>
-                <strong>Username:</strong> {chat.username}
-              </p>
-              <p>
-                <strong>Assigned Agent:</strong>{" "}
-                {chat.assignedAgent?.name || "Unassigned"}
-              </p>
-              <p>
-                <strong>Created At:</strong>{" "}
-                {new Date(chat.createdAt).toLocaleString()}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div>
+      <h3>Chat History</h3>
+      <ul>
+        {chatHistory.map((chat) => (
+          <li key={chat.sessionId}>
+            <h4>
+              Session with {chat.user} (Agent: {chat.agent})
+            </h4>
+            <ul>
+              {chat.messages.map((msg, index) => (
+                <li key={index}>
+                  <strong>
+                    {msg.sender === "user" ? chat.user : chat.agent}:
+                  </strong>{" "}
+                  {msg.content} - {new Date(msg.timestamp).toLocaleTimeString()}
+                </li>
+              ))}
+            </ul>
+            {chat.resolvedAt && (
+              <p>Resolved at: {new Date(chat.resolvedAt).toLocaleString()}</p>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };

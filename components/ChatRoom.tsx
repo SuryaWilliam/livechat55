@@ -1,125 +1,88 @@
 // components/ChatRoom.tsx
+import { useEffect, useState } from "react";
+import ChatBox from "./ChatBox";
+import socket from "../lib/socket";
 
-import { useState, useEffect } from "react";
-import ChatRating from "./ChatRating";
-import io, { Socket } from "socket.io-client";
+interface Message {
+  sender: string;
+  content: string;
+  timestamp: Date;
+}
 
 interface ChatRoomProps {
   sessionId: string;
+  initialMessages: Message[]; // Preloaded messages from the server
 }
 
-let socket: Socket;
-
-const ChatRoom: React.FC<ChatRoomProps> = ({ sessionId }) => {
-  const [messages, setMessages] = useState<
-    Array<{ sender: string; content: string; timestamp: string }>
-  >([]);
-  const [input, setInput] = useState("");
+const ChatRoom: React.FC<ChatRoomProps> = ({ sessionId, initialMessages }) => {
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [inQueue, setInQueue] = useState(false);
-  const [queuePosition, setQueuePosition] = useState<number | null>(null);
-  const [showRating, setShowRating] = useState(false);
 
   useEffect(() => {
-    socket = io();
-    socket.emit("join_queue", { sessionId });
-
-    socket.on("join_chat", () => {
-      setInQueue(false);
-      setQueuePosition(null);
-    });
-
-    socket.on("queue_position", ({ position }) => {
-      setInQueue(true);
-      setQueuePosition(position + 1);
-    });
-
-    socket.on("new_message", (message) => {
+    // Listen for new messages
+    socket.on("new_message", (message: Message) => {
       setMessages((prevMessages) => [...prevMessages, message]);
     });
 
-    socket.on("typing", (status) => setIsTyping(status));
+    // Listen for typing status
+    socket.on("typing_status", (status: boolean) => {
+      setIsTyping(status);
+    });
 
+    // Cleanup listeners on unmount
     return () => {
-      socket.off("join_chat");
-      socket.off("queue_position");
       socket.off("new_message");
-      socket.off("typing");
-      socket.disconnect();
+      socket.off("typing_status");
     };
-  }, [sessionId]);
+  }, []);
 
   const handleSendMessage = () => {
-    if (!input.trim()) return;
+    if (newMessage.trim()) {
+      const messageData = {
+        sessionId,
+        sender: "user", // Replace with "agent" for agents
+        content: newMessage,
+        timestamp: new Date(),
+      };
 
-    const newMessage = {
-      sender: "user",
-      content: input,
-      timestamp: new Date().toISOString(),
-    };
+      // Emit the message to the server
+      socket.emit("send_message", messageData);
 
-    socket.emit("send_message", newMessage);
-    setMessages((prevMessages) => [...prevMessages, newMessage]);
-    setInput("");
+      // Add the message locally
+      setMessages((prevMessages) => [...prevMessages, messageData]);
+      setNewMessage(""); // Clear the input field
+    }
+  };
+
+  const handleTyping = () => {
+    socket.emit("typing", { sessionId, isTyping: true });
+    setTimeout(
+      () => socket.emit("typing", { sessionId, isTyping: false }),
+      3000
+    );
   };
 
   return (
-    <div className="chat-room p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Chat Room</h2>
-
-      {inQueue && queuePosition && (
-        <p>Your position in queue: {queuePosition}</p>
-      )}
-
-      <div className="messages mb-4">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`mb-2 ${
-              msg.sender === "user" ? "text-right" : "text-left"
-            }`}
-          >
-            <span
-              className={`p-2 inline-block ${
-                msg.sender === "user" ? "bg-blue-200" : "bg-gray-200"
-              } rounded-md`}
-            >
-              {msg.content}
-            </span>
-            <br />
-            <small className="text-xs text-gray-500">
-              {new Date(msg.timestamp).toLocaleString()}
-            </small>
-          </div>
-        ))}
-        {isTyping && (
-          <p className="text-sm italic text-gray-500">Agent is typing...</p>
-        )}
-      </div>
-
-      <div className="message-input mb-4">
+    <div>
+      <ChatBox
+        sessionId={sessionId}
+        initialMessages={messages}
+        isTyping={isTyping}
+      />
+      <div className="message-input">
         <input
           type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={() => socket.emit("typing", true)}
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyPress={handleTyping}
           placeholder="Type your message..."
-          className="border p-2 rounded w-full"
+          className="message-input-field"
         />
-        <button
-          onClick={handleSendMessage}
-          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded"
-        >
+        <button onClick={handleSendMessage} className="send-message-button">
           Send
         </button>
       </div>
-
-      {showRating && (
-        <ChatRating
-          sessionId={sessionId}
-          onRatingSubmitted={() => setShowRating(false)}
-        />
-      )}
     </div>
   );
 };

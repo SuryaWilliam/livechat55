@@ -1,22 +1,22 @@
 // models/Rating.ts
-
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 interface IRating extends Document {
-  sessionId: Types.ObjectId;
-  rating: number;
-  feedback?: string;
+  sessionId: string; // Reference to the chat session
+  rating: number; // Rating value (e.g., 1-5)
+  feedback?: string; // Optional user feedback
+  submittedAt: Date; // When the rating was submitted
 }
 
-const RatingSchema = new Schema<IRating>({
-  sessionId: {
-    type: Schema.Types.ObjectId,
-    ref: "ChatSession",
-    required: true,
-  },
+const RatingSchema: Schema = new Schema<IRating>({
+  sessionId: { type: String, required: true },
   rating: { type: Number, required: true, min: 1, max: 5 },
-  feedback: { type: String, required: false },
+  feedback: { type: String, default: "" },
+  submittedAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.models.Rating ||
-  mongoose.model<IRating>("Rating", RatingSchema);
+// Prevent model overwrite during hot reloads
+const Rating: Model<IRating> =
+  mongoose.models.Rating || mongoose.model<IRating>("Rating", RatingSchema);
+
+export default Rating;

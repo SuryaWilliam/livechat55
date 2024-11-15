@@ -1,66 +1,61 @@
 // components/owner/AgentAnalytics.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
-interface AgentData {
-  _id: string;
+interface AgentPerformance {
+  agentId: string;
   name: string;
-  totalChats: number;
-  avgResponseTime: number;
-  avgRating: number;
+  resolvedChats: number;
+  averageResponseTime: number; // in seconds
+  rating: number; // out of 5
 }
 
-const AgentAnalytics = () => {
-  const [agentData, setAgentData] = useState<AgentData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const AgentAnalytics: React.FC = () => {
+  const [agentsPerformance, setAgentsPerformance] = useState<
+    AgentPerformance[]
+  >([]);
 
   useEffect(() => {
-    const fetchAgentAnalytics = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/owner/agentAnalytics");
-        if (!res.ok) throw new Error("Failed to fetch agent analytics");
+    // Request initial performance metrics for all agents
+    socket.emit("get_agents_performance");
 
-        const data = await res.json();
-        setAgentData(data.agentData);
-      } catch (error) {
-        setError("Could not load agent analytics. Please try again.");
-        console.error("Error fetching agent analytics:", error);
-      } finally {
-        setLoading(false);
+    // Listen for updates to agent performance
+    socket.on(
+      "agents_performance_update",
+      (updatedPerformance: AgentPerformance[]) => {
+        setAgentsPerformance(updatedPerformance);
       }
-    };
+    );
 
-    fetchAgentAnalytics();
+    // Cleanup listener on unmount
+    return () => {
+      socket.off("agents_performance_update");
+    };
   }, []);
 
-  if (loading) return <p>Loading agent analytics...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
-
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">Agent Analytics</h2>
-      <ul>
-        {agentData.map((agent) => (
-          <li key={agent._id} className="mb-4 border-b pb-2">
-            <p>
-              <strong>Name:</strong> {agent.name}
-            </p>
-            <p>
-              <strong>Total Chats:</strong> {agent.totalChats}
-            </p>
-            <p>
-              <strong>Average Response Time:</strong>{" "}
-              {agent.avgResponseTime.toFixed(2)} seconds
-            </p>
-            <p>
-              <strong>Average Rating:</strong> {agent.avgRating.toFixed(2)}
-            </p>
-          </li>
-        ))}
-      </ul>
+    <div>
+      <h3>Agent Performance Analytics</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Resolved Chats</th>
+            <th>Avg Response Time (s)</th>
+            <th>Rating</th>
+          </tr>
+        </thead>
+        <tbody>
+          {agentsPerformance.map((agent) => (
+            <tr key={agent.agentId}>
+              <td>{agent.name}</td>
+              <td>{agent.resolvedChats}</td>
+              <td>{agent.averageResponseTime}</td>
+              <td>{agent.rating.toFixed(2)} / 5</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 };

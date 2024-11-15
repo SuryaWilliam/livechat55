@@ -1,19 +1,46 @@
 // lib/dbConnect.ts
-
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI as string;
+const MONGODB_URI = process.env.MONGODB_URI || "";
 
-export async function dbConnect(): Promise<void> {
-  if (mongoose.connection.readyState >= 1) {
-    console.log("MongoDB already connected.");
-    return;
-  }
-
-  try {
-    await mongoose.connect(MONGODB_URI);
-    console.log("Connected to MongoDB");
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-  }
+// Check if the URI is available
+if (!MONGODB_URI) {
+  throw new Error(
+    "Please define the MONGODB_URI environment variable in .env.local"
+  );
 }
+
+/**
+ * Cache the connection to avoid reconnecting during hot reloads in development
+ */
+let cached = global.mongoose as {
+  conn: mongoose.Connection | null;
+  promise: Promise<mongoose.Connection> | null;
+};
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function dbConnect(): Promise<mongoose.Connection> {
+  if (cached.conn) {
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    };
+
+    cached.promise = mongoose
+      .connect(MONGODB_URI, opts)
+      .then((mongoose) => mongoose.connection);
+  }
+
+  cached.conn = await cached.promise;
+  return cached.conn;
+}
+
+export { dbConnect };

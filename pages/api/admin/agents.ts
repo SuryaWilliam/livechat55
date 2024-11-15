@@ -1,29 +1,23 @@
-// pages/api/admin/agents.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
-import { dbConnect } from "@/lib/dbConnect";
-import User from "@/models/User";
-import Role from "@/models/Role";
+import { dbConnect } from "../../../lib/dbConnect";
+import User from "../../../models/User";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   await dbConnect();
 
-  if (req.method === "GET") {
-    try {
-      const agentRole = await Role.findOne({ name: "agent" });
-      if (!agentRole) return res.status(200).json([]);
-
-      const agents = await User.find({ role: agentRole._id });
-      res.status(200).json(agents);
-    } catch (error) {
-      console.error("Error fetching agents:", error);
-      res.status(500).json({ error: "Failed to fetch agents" });
-    }
-  } else {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+  try {
+    const agents = await User.find({ role: "agent", isActive: true }).sort({
+      name: 1,
+    });
+    res.status(200).json(agents);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch agents." });
   }
 }

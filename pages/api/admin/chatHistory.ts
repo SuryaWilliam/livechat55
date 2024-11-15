@@ -1,43 +1,24 @@
-// pages/api/admin/chatHistory.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../../lib/dbConnect";
 import ChatSession from "../../../models/ChatSession";
-import Message from "../../../models/Message";
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
   await dbConnect();
 
-  if (req.method === "GET") {
-    const { query } = req.query;
-
-    try {
-      const sessions = await ChatSession.find({
-        $or: [
-          { username: { $regex: query, $options: "i" } },
-          { description: { $regex: query, $options: "i" } },
-        ],
-      });
-
-      const chatHistories = await Promise.all(
-        sessions.map(async (session) => {
-          const messages = await Message.find({ sessionId: session._id }).sort({
-            timestamp: 1,
-          });
-          return { session, messages };
-        })
-      );
-
-      res.status(200).json(chatHistories);
-    } catch (error) {
-      console.error("Error retrieving chat histories:", error);
-      res.status(500).json({ error: "Failed to fetch chat histories" });
-    }
-  } else {
-    res.setHeader("Allow", ["GET"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+  try {
+    const { limit = 50 } = req.query; // Default to fetching the latest 50 sessions
+    const chatHistory = await ChatSession.find({ isActive: false })
+      .sort({ endedAt: -1 })
+      .limit(Number(limit));
+    res.status(200).json(chatHistory);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch chat history." });
   }
 }

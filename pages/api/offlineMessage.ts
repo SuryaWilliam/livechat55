@@ -1,5 +1,3 @@
-// pages/api/offlineMessage.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../lib/dbConnect";
 import OfflineMessage from "../../models/OfflineMessage";
@@ -11,26 +9,38 @@ export default async function handler(
   await dbConnect();
 
   if (req.method === "POST") {
-    const { username, email, message } = req.body;
+    const { name, email, message, category } = req.body;
 
-    if (!username || !email || !message) {
-      return res.status(400).json({ error: "All fields are required" });
+    if (!name || !email || !message || !category) {
+      return res.status(400).json({ error: "All fields are required." });
     }
 
     try {
-      const newOfflineMessage = new OfflineMessage({
-        username,
+      const offlineMessage = new OfflineMessage({
+        name,
         email,
         message,
+        category,
+        submittedAt: new Date(),
       });
-      await newOfflineMessage.save();
-      return res.status(201).json(newOfflineMessage);
+      await offlineMessage.save();
+      res
+        .status(201)
+        .json({ message: "Offline message submitted successfully." });
     } catch (error) {
-      console.error("Error saving offline message:", error);
-      return res.status(500).json({ error: "Failed to save offline message" });
+      res.status(500).json({ error: "Failed to submit offline message." });
+    }
+  } else if (req.method === "GET") {
+    try {
+      const { limit = 50 } = req.query;
+      const offlineMessages = await OfflineMessage.find()
+        .sort({ submittedAt: -1 })
+        .limit(Number(limit));
+      res.status(200).json(offlineMessages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch offline messages." });
     }
   } else {
-    res.setHeader("Allow", ["POST"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+    res.status(405).json({ error: "Method not allowed" });
   }
 }

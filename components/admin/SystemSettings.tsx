@@ -1,80 +1,73 @@
 // components/admin/SystemSettings.tsx
-
 import { useEffect, useState } from "react";
+import socket from "../../lib/socket";
 
-interface AgentAvailability {
-  day: string;
-  startTime: string;
-  endTime: string;
+interface SystemSetting {
+  key: string;
+  value: string | number | boolean;
 }
 
-interface SystemSettingsData {
-  maxQueueSize: number;
-  notificationPreferences: string[];
-  agentAvailability: AgentAvailability[];
-}
-
-const SystemSettings = () => {
-  const [settings, setSettings] = useState<SystemSettingsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const SystemSettings: React.FC = () => {
+  const [settings, setSettings] = useState<SystemSetting[]>([]);
+  const [editedSetting, setEditedSetting] = useState<SystemSetting | null>(
+    null
+  );
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch("/api/admin/systemSettings");
-        if (!res.ok) throw new Error("Failed to load settings");
+    // Request initial system settings
+    socket.emit("get_system_settings");
 
-        const data = await res.json();
-        setSettings(
-          data || {
-            maxQueueSize: 10,
-            notificationPreferences: ["email"],
-            agentAvailability: [],
-          }
-        );
-      } catch (error) {
-        setError("Could not load system settings. Please try again.");
-        console.error("Error fetching system settings:", error);
-      } finally {
-        setLoading(false);
-      }
+    // Listen for updates to system settings
+    socket.on("system_settings_update", (updatedSettings: SystemSetting[]) => {
+      setSettings(updatedSettings);
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      socket.off("system_settings_update");
     };
-
-    fetchSettings();
   }, []);
 
-  if (loading) return <p>Loading system settings...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  const handleSave = () => {
+    if (editedSetting) {
+      socket.emit("update_system_setting", editedSetting);
+      setEditedSetting(null); // Clear edit state
+    }
+  };
+
+  const handleEdit = (setting: SystemSetting) => {
+    setEditedSetting(setting);
+  };
 
   return (
-    <div className="p-4 bg-white shadow-md rounded-md">
-      <h2 className="text-lg font-bold mb-4">System Settings</h2>
-      {settings && (
+    <div>
+      <h3>System Settings</h3>
+      <ul>
+        {settings.map((setting) => (
+          <li key={setting.key}>
+            <strong>{setting.key}</strong>: {setting.value.toString()}
+            <button onClick={() => handleEdit(setting)}>Edit</button>
+          </li>
+        ))}
+      </ul>
+      {editedSetting && (
         <div>
-          <p>
-            <strong>Max Queue Size:</strong> {settings.maxQueueSize}
-          </p>
-          <p>
-            <strong>Notification Preferences:</strong>{" "}
-            {settings.notificationPreferences.join(", ")}
-          </p>
-          <h3 className="font-semibold mt-4">Agent Availability:</h3>
-          <ul>
-            {settings.agentAvailability.map((availability, index) => (
-              <li key={index} className="mb-2">
-                <p>
-                  <strong>Day:</strong> {availability.day}
-                </p>
-                <p>
-                  <strong>Time:</strong> {availability.startTime} -{" "}
-                  {availability.endTime}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <h4>Edit Setting</h4>
+          <label>
+            {editedSetting.key}:
+            <input
+              type="text"
+              value={editedSetting.value.toString()}
+              onChange={(e) =>
+                setEditedSetting({
+                  ...editedSetting,
+                  value: e.target.value,
+                })
+              }
+            />
+          </label>
+          <button onClick={handleSave}>Save</button>
+          <button onClick={() => setEditedSetting(null)}>Cancel</button>
         </div>
       )}
     </div>

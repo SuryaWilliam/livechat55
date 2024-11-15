@@ -1,5 +1,3 @@
-// pages/api/session.ts
-
 import { NextApiRequest, NextApiResponse } from "next";
 import { dbConnect } from "../../lib/dbConnect";
 import ChatSession from "../../models/ChatSession";
@@ -14,19 +12,65 @@ export default async function handler(
     const { username, description, category } = req.body;
 
     if (!username || !description || !category) {
-      return res.status(400).json({ error: "All fields are required" });
+      return res
+        .status(400)
+        .json({ error: "Username, description, and category are required." });
     }
 
     try {
-      const session = new ChatSession({ username, description, category });
-      await session.save();
-      return res.status(201).json({ sessionId: session._id });
+      const newSession = new ChatSession({
+        username,
+        description,
+        category,
+        isActive: true,
+        startedAt: new Date(),
+      });
+      await newSession.save();
+
+      res.status(201).json({
+        message: "Chat session created successfully.",
+        session: newSession,
+      });
     } catch (error) {
-      console.error("Error creating session:", error);
-      return res.status(500).json({ error: "Failed to create session" });
+      res.status(500).json({ error: "Failed to create chat session." });
+    }
+  } else if (req.method === "GET") {
+    const { sessionId } = req.query;
+
+    if (!sessionId || typeof sessionId !== "string") {
+      return res.status(400).json({ error: "Session ID is required." });
+    }
+
+    try {
+      const session = await ChatSession.findById(sessionId);
+
+      if (!session) {
+        return res.status(404).json({ error: "Chat session not found." });
+      }
+
+      res.status(200).json(session);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch chat session." });
+    }
+  } else if (req.method === "DELETE") {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: "Session ID is required." });
+    }
+
+    try {
+      const deletedSession = await ChatSession.findByIdAndDelete(sessionId);
+
+      if (!deletedSession) {
+        return res.status(404).json({ error: "Chat session not found." });
+      }
+
+      res.status(200).json({ message: "Chat session deleted successfully." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete chat session." });
     }
   } else {
-    res.setHeader("Allow", ["POST"]);
-    res.status(405).json({ error: "Method Not Allowed" });
+    res.status(405).json({ error: "Method not allowed" });
   }
 }
